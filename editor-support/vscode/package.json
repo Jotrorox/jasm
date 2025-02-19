@@ -7,7 +7,8 @@
     "type": "git",
     "url": "https://github.com/Jotrorox/jasm"
   },
-  "publisher": "Johannes (Jotrorox) Müller",
+  "license": "MIT",
+  "publisher": "Jotrorox",
   "engines": {
     "vscode": "^1.97.0"
   },
@@ -21,12 +22,12 @@
     "languages": [{
       "id": "jasm",
       "aliases": ["JASM", "jasm"],
-      "extensions": [".asm"],
+      "extensions": [".jasm"],
       "configuration": "./language-configuration.json"
     }],
     "grammars": [{
       "language": "jasm",
-      "scopeName": "source.asm",
+      "scopeName": "source.jasm",
       "path": "./syntaxes/jasm.tmLanguage.json"
     }]
   }

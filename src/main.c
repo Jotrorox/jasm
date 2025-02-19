@@ -7,7 +7,7 @@ int main(int argc, char **argv)
     const char *output_name = "a.out";
     if (argc < 2)
     {
-        fprintf(stderr, "Usage: %s <input.asm> [output binary]\n", argv[0]);
+        fprintf(stderr, "Usage: %s <input.jasm> [output binary]\n", argv[0]);
         return 1;
     }
 

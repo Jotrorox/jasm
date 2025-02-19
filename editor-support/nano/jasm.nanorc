@@ -1,0 +1,11 @@
+# jasm Syntax Hightlighting
+syntax "JASM" "\.jasm$"
+
+# Keywords
+icolor brightgreen "^(move|call|data)\b"
+
+# Strings
+icolor yellow start="\"" end="\"" 
+
+# Comments
+icolor cyan "^#.*$"
