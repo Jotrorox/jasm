@@ -1,0 +1,89 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "JASM",
+    "patterns": [
+        {
+            "include": "#keywords"
+        },
+        {
+            "include": "#registers"
+        },
+        {
+            "include": "#numbers"
+        },
+        {
+            "include": "#strings"
+        },
+        {
+            "include": "#comments"
+        },
+        {
+            "include": "#variables"
+        },
+        {
+            "include": "#labelReferences"
+        }
+    ],
+    "repository": {
+        "keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.control.jasm",
+                    "match": "\\b(move|call|data)\\b"
+                }
+            ]
+        },
+        "registers": {
+            "patterns": [
+                {
+                    "name": "variable.register.jasm",
+                    "match": "\\b(?:r(ax|di|si|dx|cx|bp|sp)|r(?:8|9|10|11|12|13|14|15))\\b"
+                }
+            ]
+        },
+        "numbers": {
+            "patterns": [
+                {
+                    "name": "constant.numeric.jasm",
+                    "match": "\\b\\d+\\b"
+                }
+            ]
+        },
+        "strings": {
+            "name": "string.quoted.double.jasm",
+            "begin": "\"",
+            "end": "\"",
+            "patterns": [
+                {
+                    "name": "constant.character.escape.jasm",
+                    "match": "\\\\."
+                }
+            ]
+        },
+        "comments": {
+            "patterns": [
+                {
+                    "name": "comment.line.number-sign.jasm",
+                    "match": "#.*$"
+                }
+            ]
+        },
+        "variables": {
+            "patterns": [
+                {
+                    "name": "variable.other.jasm",
+                    "match": "(?<=\\bdata\\s)[A-Za-z_][A-Za-z0-9_]*"
+                }
+            ]
+        },
+        "labelReferences": {
+            "patterns": [
+                {
+                    "name": "variable.other.label.jasm",
+                    "match": "(?<!\\bdata\\s)\\b[A-Za-z_][A-Za-z0-9_]*\\b"
+                }
+            ]
+        }
+    },
+    "scopeName": "source.asm"
+}
