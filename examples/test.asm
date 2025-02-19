@@ -1,7 +1,7 @@
 # Example: Print "Hello, world!" followed by a newline to stdout using sys_write, then exit.
 # Syscall details:
-#  sys_write: rax=1, rdi=stdout, rsi=buffer, rdx=length.
-#  sys_exit:  rax=60, rdi=exit status.
+#   sys_write: rax=1, rdi=stdout, rsi=buffer, rdx=length.
+#   sys_exit:  rax=60, rdi=exit status.
 #
 # The entry point is at the beginning of the code section.
 
