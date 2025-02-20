@@ -20,7 +20,7 @@ SRCS = $(wildcard $(SRC_DIR)/*.c)
 OBJS = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SRCS))
 
 # Final binary name.
-TARGET = $(BUILD_DIR)/$(NAME)-$(VERSION)
+TARGET = $(BUILD_DIR)/$(NAME)
 
 # Targets
 all: $(TARGET)

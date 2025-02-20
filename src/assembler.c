@@ -11,11 +11,13 @@
 typedef struct
 {
     char label[32];
-    enum {
-        DATA_STRING,    /* String literal */
-        DATA_BUFFER,    /* Raw buffer of given size */
+    enum
+    {
+        DATA_STRING, /* String literal */
+        DATA_BUFFER, /* Raw buffer of given size */
     } type;
-    union {
+    union
+    {
         char literal[MAX_LINE_LEN];
         size_t size;
     } data;
@@ -126,7 +128,7 @@ void process_escape_sequences(const char *input, char *output)
 /* Check if string represents a memory reference [symbol] */
 static int is_memory_ref(const char *str)
 {
-    return str[0] == '[' && str[strlen(str)-1] == ']';
+    return str[0] == '[' && str[strlen(str) - 1] == ']';
 }
 
 /* Extract symbol name from memory reference [symbol] */
@@ -161,11 +163,11 @@ static void process_data_directive(char *trimmed)
         exit(1);
     }
     value = trim(value);
-    
+
     /* Save the directive for later processing */
     strncpy(dataDirectives[dataDirCount].label, label, sizeof(dataDirectives[dataDirCount].label) - 1);
     dataDirectives[dataDirCount].label[sizeof(dataDirectives[dataDirCount].label) - 1] = '\0';
-    
+
     if (value[0] == '"')
     {
         /* String literal */
@@ -235,7 +237,7 @@ static size_t simulate_instruction(const char *line)
     char *trimmed = trim(buf);
     if (strncmp(trimmed, "move", 4) == 0)
     {
-        /* Format: 
+        /* Format:
            move <register>, <immediate>
            move <register>, [<symbol>]  ; load from memory
            move [<symbol>], <register>  ; store to memory
@@ -347,8 +349,7 @@ static struct
     {"rbx", 0x03},
     {"rsi", 0x06},
     {"rdi", 0x07},
-    {NULL, 0}
-};
+    {NULL, 0}};
 
 /* Get register opcode for move. */
 static uint8_t get_register_opcode(const char *reg)
@@ -374,7 +375,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
         return; /* skip data directives */
     if (strncmp(trimmed, "move", 4) == 0)
     {
-        /* Format: 
+        /* Format:
            move <register>, <immediate>
            move <register>, [<symbol>]  ; load from memory
            move [<symbol>], <register>  ; store to memory
@@ -403,13 +404,13 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
             char *symbol = extract_memory_ref(dest);
             uint64_t addr = lookup_symbol(symbol);
             uint8_t reg = get_register_opcode(token);
-            
+
             /* Calculate relative offset from next instruction */
             int64_t rel_addr = addr - (BASE_ADDR + CODE_OFFSET + codeBuf->size + 7);
-            
+
             /* mov [rip + disp32], reg */
-            codeBuf->bytes[codeBuf->size++] = 0x48; /* REX.W */
-            codeBuf->bytes[codeBuf->size++] = 0x89; /* mov r/m64, r64 */
+            codeBuf->bytes[codeBuf->size++] = 0x48;              /* REX.W */
+            codeBuf->bytes[codeBuf->size++] = 0x89;              /* mov r/m64, r64 */
             codeBuf->bytes[codeBuf->size++] = (reg << 3) | 0x05; /* ModR/M: RIP-relative */
             /* 32-bit relative address */
             for (int i = 0; i < 4; i++)
@@ -421,13 +422,13 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
             char *symbol = extract_memory_ref(token);
             uint64_t addr = lookup_symbol(symbol);
             uint8_t reg = get_register_opcode(dest);
-            
+
             /* Calculate relative offset from next instruction */
             int64_t rel_addr = addr - (BASE_ADDR + CODE_OFFSET + codeBuf->size + 7);
-            
+
             /* mov reg, [rip + disp32] */
-            codeBuf->bytes[codeBuf->size++] = 0x48; /* REX.W */
-            codeBuf->bytes[codeBuf->size++] = 0x8B; /* mov r64, r/m64 */
+            codeBuf->bytes[codeBuf->size++] = 0x48;              /* REX.W */
+            codeBuf->bytes[codeBuf->size++] = 0x8B;              /* mov r64, r/m64 */
             codeBuf->bytes[codeBuf->size++] = (reg << 3) | 0x05; /* ModR/M: RIP-relative */
             /* 32-bit relative address */
             for (int i = 0; i < 4; i++)
@@ -438,12 +439,12 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
             /* Move immediate to register */
             uint64_t val = strtoull(token, NULL, 0);
             uint8_t reg = get_register_opcode(dest);
-            
+
             /* For small values, use 32-bit move which zero-extends to 64 bits */
             if (val <= 0xffffffffULL)
             {
-                codeBuf->bytes[codeBuf->size++] = 0x48; /* REX.W */
-                codeBuf->bytes[codeBuf->size++] = 0xC7; /* mov r/m64, imm32 */
+                codeBuf->bytes[codeBuf->size++] = 0x48;       /* REX.W */
+                codeBuf->bytes[codeBuf->size++] = 0xC7;       /* mov r/m64, imm32 */
                 codeBuf->bytes[codeBuf->size++] = 0xC0 | reg; /* ModR/M: register direct */
                 for (int i = 0; i < 4; i++)
                     codeBuf->bytes[codeBuf->size++] = (uint8_t)((val >> (8 * i)) & 0xff);
@@ -451,7 +452,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
             else
             {
                 /* For large values, use movabs */
-                codeBuf->bytes[codeBuf->size++] = 0x48; /* REX.W */
+                codeBuf->bytes[codeBuf->size++] = 0x48;       /* REX.W */
                 codeBuf->bytes[codeBuf->size++] = 0xB8 + reg; /* movabs r64, imm64 */
                 for (int i = 0; i < 8; i++)
                     codeBuf->bytes[codeBuf->size++] = (uint8_t)((val >> (8 * i)) & 0xff);
@@ -462,12 +463,12 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
             /* Move symbol address to register */
             uint64_t symVal = lookup_symbol(token);
             uint8_t reg = get_register_opcode(dest);
-            
+
             /* Use lea for symbol addresses */
-            codeBuf->bytes[codeBuf->size++] = 0x48; /* REX.W */
-            codeBuf->bytes[codeBuf->size++] = 0x8D; /* lea r64, m */
+            codeBuf->bytes[codeBuf->size++] = 0x48;              /* REX.W */
+            codeBuf->bytes[codeBuf->size++] = 0x8D;              /* lea r64, m */
             codeBuf->bytes[codeBuf->size++] = (reg << 3) | 0x05; /* ModR/M: RIP-relative */
-            
+
             /* Calculate relative offset from next instruction */
             int64_t rel_addr = symVal - (BASE_ADDR + CODE_OFFSET + codeBuf->size + 4);
             for (int i = 0; i < 4; i++)
@@ -545,8 +546,8 @@ static void write_elf(const char *outfile, CodeBuffer *codeBuf, DataBuffer *data
         uint64_t p_align;
     } Elf64_Phdr;
     Elf64_Phdr ph = {0};
-    ph.p_type = 1;  /* PT_LOAD */
-    ph.p_flags = 7; /* PF_R | PF_W | PF_X */  // Make segment readable, writable and executable
+    ph.p_type = 1;                           /* PT_LOAD */
+    ph.p_flags = 7; /* PF_R | PF_W | PF_X */ // Make segment readable, writable and executable
     ph.p_offset = 0;
     ph.p_vaddr = BASE_ADDR;
     ph.p_paddr = BASE_ADDR;
@@ -597,18 +598,18 @@ int assemble(const char *input_filename, const char *output_filename)
     {
         uint64_t addr = dataBase + dataBuf.size;
         add_symbol(dataDirectives[i].label, addr);
-        
+
         if (dataDirectives[i].type == DATA_STRING)
         {
             char processed[MAX_LINE_LEN];
             process_escape_sequences(dataDirectives[i].data.literal, processed);
-            size_t len = strlen(processed);  // Don't include null terminator in length for sys_write
-            if (dataBuf.size + len + 1 > MAX_DATA_SIZE)  // But allocate space for it
+            size_t len = strlen(processed);             // Don't include null terminator in length for sys_write
+            if (dataBuf.size + len + 1 > MAX_DATA_SIZE) // But allocate space for it
             {
                 fprintf(stderr, "Error: data buffer overflow\n");
                 exit(1);
             }
-            memcpy(dataBuf.bytes + dataBuf.size, processed, len + 1);  // Copy with null terminator
+            memcpy(dataBuf.bytes + dataBuf.size, processed, len + 1); // Copy with null terminator
             dataBuf.size += len + 1;
         }
         else /* DATA_BUFFER */
