@@ -9,7 +9,7 @@
 move rax, 1       # sys_write
 move rdi, 1       # stdout file descriptor
 move rsi, msg     # address of message (resolved via symbol)
-move rdx, 14      # message length
+move rdx, 14      # message length (including newline)
 call
 
 # sys_exit(0)

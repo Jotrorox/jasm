@@ -1,0 +1,33 @@
+# Example: Read input from stdin and echo it back
+# Syscall details:
+#   sys_read:  rax=0, rdi=stdin, rsi=buffer, rdx=length
+#   sys_write: rax=1, rdi=stdout, rsi=buffer, rdx=length
+#   sys_exit:  rax=60, rdi=exit status
+
+# Allocate buffer for input
+data buffer size 1024
+
+# Read from stdin
+move rax, 0       # sys_read
+move rdi, 0       # stdin file descriptor
+move rsi, buffer  # buffer address
+move rdx, 1024    # buffer size
+call
+
+# Save number of bytes read
+move [bytes_read], rax
+
+# Write back to stdout
+move rax, 1       # sys_write
+move rdi, 1       # stdout file descriptor
+move rsi, buffer  # buffer address
+move rdx, [bytes_read]  # number of bytes to write
+call
+
+# Exit
+move rax, 60      # sys_exit
+move rdi, 0       # exit status 0
+call
+
+# Variable to store number of bytes read
+data bytes_read size 8 
