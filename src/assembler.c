@@ -204,6 +204,25 @@ static void process_data_directive(char *trimmed)
     dataDirCount++;
 }
 
+/* Check if a line is a label definition (ends with ':') */
+static int is_label(const char *line)
+{
+    size_t len = strlen(line);
+    return len > 0 && line[len - 1] == ':';
+}
+
+/* Process a label definition, returns the label name without the colon */
+static char *process_label(const char *line)
+{
+    static char buf[MAX_LINE_LEN];
+    size_t len = strlen(line);
+    if (len <= 1)
+        return NULL;            /* Empty label */
+    memcpy(buf, line, len - 1); /* Copy without colon */
+    buf[len - 1] = '\0';
+    return trim(buf);
+}
+
 /* ---- File Reading and First Pass ---- */
 
 /* Read all lines from a file into the global lines array.
@@ -228,6 +247,10 @@ static size_t read_all_lines(const char *filename)
    Supported:
      move <reg>, <immediate> -> 5 bytes if immediate fits in 32 bits, else 10 bytes.
      call -> 2 bytes.
+     jump -> 5 bytes
+     jumplt/jumpgt/jumpeq -> 6 bytes
+     comp <reg>, <reg/immediate> -> 3-7 bytes
+     add <reg>, <reg/immediate> -> 3-7 bytes
 */
 static size_t simulate_instruction(const char *line)
 {
@@ -302,6 +325,58 @@ static size_t simulate_instruction(const char *line)
     {
         return 2;
     }
+    else if (strncmp(trimmed, "jumplt", 6) == 0 ||
+             strncmp(trimmed, "jumpgt", 6) == 0 ||
+             strncmp(trimmed, "jumpeq", 6) == 0)
+    {
+        /* Conditional jump:
+           - Opcode (2 bytes)
+           - 32-bit relative offset (4 bytes)
+        */
+        return 6;
+    }
+    else if (strncmp(trimmed, "jump", 4) == 0)
+    {
+        /* jump instruction:
+           - Opcode (1 byte)
+           - 32-bit relative offset (4 bytes)
+        */
+        return 5;
+    }
+    else if (strncmp(trimmed, "comp", 4) == 0 || strncmp(trimmed, "add", 3) == 0)
+    {
+        /* Format: comp/add <reg>, <reg/immediate> */
+        char *token = strtok(trimmed, " ,\t"); /* "comp" or "add" */
+        if (!token)
+            return 0;
+        char *first = strtok(NULL, " ,\t"); /* first operand */
+        if (!first)
+            return 0;
+
+        char *second = strtok(NULL, " ,\t"); /* second operand */
+        if (!second)
+            return 0;
+
+        if (is_numeric(second))
+        {
+            /* Operation with immediate:
+               - REX.W (1 byte)
+               - Opcode (1 byte)
+               - ModR/M (1 byte)
+               - 32-bit immediate (4 bytes)
+            */
+            return 7;
+        }
+        else
+        {
+            /* Register-register:
+               - REX.W (1 byte)
+               - Opcode (1 byte)
+               - ModR/M (1 byte)
+            */
+            return 3;
+        }
+    }
     return 0;
 }
 
@@ -318,10 +393,18 @@ static size_t first_pass(size_t lineCount)
             continue;
         if (strncmp(trimmed, "data", 4) == 0)
         {
-            /* Process data directive.
-               Format: data <label> "string literal"
-            */
+            /* Process data directive */
             process_data_directive(trimmed);
+        }
+        else if (is_label(trimmed))
+        {
+            /* Process label definition */
+            char *label = process_label(trimmed);
+            if (label)
+            {
+                /* Store label position in symbol table */
+                add_symbol(label, BASE_ADDR + CODE_OFFSET + codeSize);
+            }
         }
         else
         {
@@ -373,6 +456,8 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
         return;
     if (strncmp(trimmed, "data", 4) == 0)
         return; /* skip data directives */
+    if (is_label(trimmed))
+        return; /* skip label definitions */
     if (strncmp(trimmed, "move", 4) == 0)
     {
         /* Format:
@@ -480,6 +565,147 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
         /* syscall opcode */
         codeBuf->bytes[codeBuf->size++] = 0x0F;
         codeBuf->bytes[codeBuf->size++] = 0x05;
+    }
+    else if (strncmp(trimmed, "jumplt", 6) == 0 ||
+             strncmp(trimmed, "jumpgt", 6) == 0 ||
+             strncmp(trimmed, "jumpeq", 6) == 0)
+    {
+        /* Get label name */
+        char *label = strtok(trimmed + 6, " \t");
+        if (!label)
+        {
+            fprintf(stderr, "Error: conditional jump instruction requires a label\n");
+            exit(1);
+        }
+        label = trim(label);
+
+        /* Look up label address */
+        uint64_t target = lookup_symbol(label);
+
+        /* Calculate relative offset from next instruction */
+        int64_t rel_addr = target - (BASE_ADDR + CODE_OFFSET + codeBuf->size + 6);
+
+        /* Check if offset fits in 32 bits */
+        if (rel_addr < INT32_MIN || rel_addr > INT32_MAX)
+        {
+            fprintf(stderr, "Error: jump target too far\n");
+            exit(1);
+        }
+
+        /* Emit conditional jump instruction based on type:
+           jumplt: 0x0F 0x8C (jl)
+           jumpgt: 0x0F 0x8F (jg)
+           jumpeq: 0x0F 0x84 (je)
+        */
+        codeBuf->bytes[codeBuf->size++] = 0x0F;
+        if (strncmp(trimmed, "jumplt", 6) == 0)
+            codeBuf->bytes[codeBuf->size++] = 0x8C;
+        else if (strncmp(trimmed, "jumpgt", 6) == 0)
+            codeBuf->bytes[codeBuf->size++] = 0x8F;
+        else /* jumpeq */
+            codeBuf->bytes[codeBuf->size++] = 0x84;
+
+        /* 32-bit relative offset */
+        for (int i = 0; i < 4; i++)
+            codeBuf->bytes[codeBuf->size++] = (uint8_t)((rel_addr >> (8 * i)) & 0xff);
+    }
+    else if (strncmp(trimmed, "jump", 4) == 0)
+    {
+        /* Get label name */
+        char *label = strtok(trimmed + 4, " \t");
+        if (!label)
+        {
+            fprintf(stderr, "Error: jump instruction requires a label\n");
+            exit(1);
+        }
+        label = trim(label);
+
+        /* Look up label address */
+        uint64_t target = lookup_symbol(label);
+
+        /* Calculate relative offset from next instruction */
+        int64_t rel_addr = target - (BASE_ADDR + CODE_OFFSET + codeBuf->size + 5);
+
+        /* Check if offset fits in 32 bits */
+        if (rel_addr < INT32_MIN || rel_addr > INT32_MAX)
+        {
+            fprintf(stderr, "Error: jump target too far\n");
+            exit(1);
+        }
+
+        /* Emit jump instruction:
+           0xE9 <32-bit relative offset>
+        */
+        codeBuf->bytes[codeBuf->size++] = 0xE9;
+        for (int i = 0; i < 4; i++)
+            codeBuf->bytes[codeBuf->size++] = (uint8_t)((rel_addr >> (8 * i)) & 0xff);
+    }
+    else if (strncmp(trimmed, "comp", 4) == 0 || strncmp(trimmed, "add", 3) == 0)
+    {
+        /* Format: comp/add <reg>, <reg/immediate> */
+        char *token = strtok(trimmed, " ,\t");
+        if (!token)
+        {
+            fprintf(stderr, "Error: expected instruction\n");
+            exit(1);
+        }
+
+        char *first = strtok(NULL, " ,\t"); /* first operand */
+        if (!first)
+        {
+            fprintf(stderr, "Error: expected first operand\n");
+            exit(1);
+        }
+
+        char *second = strtok(NULL, " ,\t"); /* second operand */
+        if (!second)
+        {
+            fprintf(stderr, "Error: expected second operand\n");
+            exit(1);
+        }
+
+        uint8_t reg = get_register_opcode(first);
+
+        if (is_numeric(second))
+        {
+            uint64_t val = strtoull(second, NULL, 0);
+            if (strncmp(trimmed, "comp", 4) == 0)
+            {
+                /* Compare with immediate */
+                codeBuf->bytes[codeBuf->size++] = 0x48;       /* REX.W */
+                codeBuf->bytes[codeBuf->size++] = 0x81;       /* cmp r/m64, imm32 */
+                codeBuf->bytes[codeBuf->size++] = 0xF8 | reg; /* ModR/M: register direct */
+                /* 32-bit immediate */
+                for (int i = 0; i < 4; i++)
+                    codeBuf->bytes[codeBuf->size++] = (uint8_t)((val >> (8 * i)) & 0xff);
+            }
+            else /* add */
+            {
+                /* Add immediate */
+                codeBuf->bytes[codeBuf->size++] = 0x48;       /* REX.W */
+                codeBuf->bytes[codeBuf->size++] = 0x81;       /* add r/m64, imm32 */
+                codeBuf->bytes[codeBuf->size++] = 0xC0 | reg; /* ModR/M: register direct */
+                /* 32-bit immediate */
+                for (int i = 0; i < 4; i++)
+                    codeBuf->bytes[codeBuf->size++] = (uint8_t)((val >> (8 * i)) & 0xff);
+            }
+        }
+        else
+        {
+            /* Register-register operation */
+            uint8_t reg2 = get_register_opcode(second);
+            codeBuf->bytes[codeBuf->size++] = 0x48; /* REX.W */
+            if (strncmp(trimmed, "comp", 4) == 0)
+            {
+                codeBuf->bytes[codeBuf->size++] = 0x39;                     /* cmp r/m64, r64 */
+                codeBuf->bytes[codeBuf->size++] = 0xC0 | (reg2 << 3) | reg; /* ModR/M */
+            }
+            else /* add */
+            {
+                codeBuf->bytes[codeBuf->size++] = 0x01;                     /* add r/m64, r64 */
+                codeBuf->bytes[codeBuf->size++] = 0xC0 | (reg2 << 3) | reg; /* ModR/M */
+            }
+        }
     }
     else
     {

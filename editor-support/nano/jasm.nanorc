@@ -2,7 +2,10 @@
 syntax "JASM" "\.jasm$"
 
 # Keywords
-icolor brightgreen "^(move|call|data)\b"
+icolor brightgreen "^(move|call|jump|jumplt|jumpgt|jumpeq|comp|add|data)\b"
+
+# Labels
+icolor brightmagenta "^[A-Za-z_][A-Za-z0-9_]*:"
 
 # Strings
 icolor yellow start="\"" end="\"" 

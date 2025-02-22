@@ -1,0 +1,58 @@
+# Example: Print numbers 1 to 5 to console
+# Each number is printed on a new line
+# Uses sys_write syscall to print and converts numbers to ASCII
+
+# Initialize counter to 1
+move rax, 1
+move [counter], rax
+
+loop_start:
+    # Print "Count: " prefix
+    move rax, 1          # sys_write
+    move rdi, 1          # stdout
+    move rsi, count_str  # "Count: " string
+    move rdx, 7          # length of "Count: "
+    call
+
+    # Convert current number to ASCII
+    move rax, [counter]
+    move rbx, 48         # ASCII '0' is 48
+    add rax, rbx         # Convert to ASCII digit
+    move [number_buf], rax
+
+    # Print the current number
+    move rax, 1          # sys_write
+    move rdi, 1          # stdout
+    move rsi, number_buf # buffer with number
+    move rdx, 1          # length (1 character)
+    call
+
+    # Print newline
+    move rax, 1          # sys_write
+    move rdi, 1          # stdout
+    move rsi, newline    # newline character
+    move rdx, 1          # length
+    call
+
+    # Increment counter
+    move rax, [counter]
+    move rbx, 1
+    add rax, rbx
+    move [counter], rax
+
+    # Compare counter with 6 (loop until we print 5)
+    move rax, [counter]
+    move rbx, 6
+    comp rax, rbx
+    jumplt loop_start    # If counter < 6, continue loop
+
+# Exit program
+move rax, 60      # sys_exit
+move rdi, 0       # status 0
+call
+
+# Data section
+data counter size 8       # 64-bit counter
+data number_buf size 1    # Buffer for ASCII digit
+data count_str "Count: "
+data newline "\n"        # Newline character

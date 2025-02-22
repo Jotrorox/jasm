@@ -21,6 +21,9 @@
             "include": "#variables"
         },
         {
+            "include": "#labelDefinitions"
+        },
+        {
             "include": "#labelReferences"
         }
     ],
@@ -29,7 +32,7 @@
             "patterns": [
                 {
                     "name": "keyword.control.jasm",
-                    "match": "\\b(move|call|data)\\b"
+                    "match": "\\b(move|call|jump|jumplt|jumpgt|jumpeq|comp|add|data)\\b"
                 }
             ]
         },
@@ -73,6 +76,14 @@
                 {
                     "name": "variable.other.jasm",
                     "match": "(?<=\\bdata\\s)[A-Za-z_][A-Za-z0-9_]*"
+                }
+            ]
+        },
+        "labelDefinitions": {
+            "patterns": [
+                {
+                    "name": "entity.name.label.jasm",
+                    "match": "^[A-Za-z_][A-Za-z0-9_]*:"
                 }
             ]
         },
