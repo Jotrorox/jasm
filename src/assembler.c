@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include "assembler.h"
 #include "binary_writer.h"
+#include "color_utils.h"  /* Include our new color utilities */
 
 /* ---- Internal Constants and Structures ---- */
 
@@ -65,7 +66,7 @@ static void add_symbol(const char *name, uint64_t value)
 {
     if (symbolCount >= MAX_SYMBOLS)
     {
-        fprintf(stderr, "Error: symbol table overflow\n");
+        color_error("symbol table overflow");
         exit(1);
     }
     strncpy(symbols[symbolCount].name, name, sizeof(symbols[symbolCount].name) - 1);
@@ -82,7 +83,7 @@ static uint64_t lookup_symbol(const char *name)
         if (strcmp(symbols[i].name, name) == 0)
             return symbols[i].value;
     }
-    fprintf(stderr, "Error: unknown symbol '%s'\n", name);
+    color_error("unknown symbol '%s'", name);
     exit(1);
 }
 
@@ -162,13 +163,13 @@ static void process_data_directive(char *trimmed)
     char *label = strtok(p, " \t");
     if (!label)
     {
-        fprintf(stderr, "Error: data directive requires a label\n");
+        color_error("data directive requires a label");
         exit(1);
     }
     char *value = strtok(NULL, "\n");
     if (!value)
     {
-        fprintf(stderr, "Error: data directive missing value\n");
+        color_error("data directive missing value");
         exit(1);
     }
     value = trim(value);
@@ -185,7 +186,7 @@ static void process_data_directive(char *trimmed)
         char *endQuote = strchr(value, '"');
         if (!endQuote)
         {
-            fprintf(stderr, "Error: missing closing quote in data directive\n");
+            color_error("missing closing quote in data directive");
             exit(1);
         }
         *endQuote = '\0';
@@ -202,7 +203,7 @@ static void process_data_directive(char *trimmed)
         filename = trim(filename);
         if (!filename || !*filename)
         {
-            fprintf(stderr, "Error: file directive requires a filename\n");
+            color_error("file directive requires a filename");
             exit(1);
         }
         
@@ -219,7 +220,7 @@ static void process_data_directive(char *trimmed)
         sizeStr = trim(sizeStr);
         if (!is_numeric(sizeStr))
         {
-            fprintf(stderr, "Error: size must be a number\n");
+            color_error("size must be a number");
             exit(1);
         }
         dataDirectives[dataDirCount].data.size = strtoull(sizeStr, NULL, 0);
@@ -245,7 +246,7 @@ static void process_data_directive(char *trimmed)
             }
             if (*value && !isspace((unsigned char)*value))
             {
-                fprintf(stderr, "Error: invalid binary number\n");
+                color_error("invalid binary number");
                 exit(1);
             }
         }
@@ -258,13 +259,13 @@ static void process_data_directive(char *trimmed)
         dataDirectives[dataDirCount].data.value = strtoull(value, &endptr, 10);
         if (*endptr && !isspace((unsigned char)*endptr))
         {
-            fprintf(stderr, "Error: invalid decimal number\n");
+            color_error("invalid decimal number");
             exit(1);
         }
     }
     else
     {
-        fprintf(stderr, "Error: data directive requires a string literal, 'size <number>', or a numeric value (decimal, 0x... for hex, 0b... for binary)\n");
+        color_error("data directive requires a string literal, 'size <number>', or a numeric value (decimal, 0x... for hex, 0b... for binary)");
         exit(1);
     }
     dataDirCount++;
@@ -299,6 +300,7 @@ static size_t read_all_lines(const char *filename)
     FILE *fp = fopen(filename, "r");
     if (!fp)
     {
+        color_error("Failed to open file: %s", filename);
         perror("fopen");
         exit(1);
     }
@@ -508,27 +510,18 @@ static uint8_t get_register_opcode(const char *reg)
         if (strcmp(reg, regmap[i].name) == 0)
             return regmap[i].offset;
     }
-    fprintf(stderr, "Error: unknown register '%s'\n", reg);
+    color_error("unknown register '%s'", reg);
     exit(1);
 }
 
-/* Ensure there's enough space in a buffer for additional bytes */
-static void ensure_buffer_capacity(CodeBuffer* codeBuf, size_t additional_bytes) {
-    if (codeBuf->size + additional_bytes > codeBuf->capacity) {
-        size_t new_capacity = codeBuf->capacity * 2;
-        if (new_capacity < codeBuf->size + additional_bytes) {
-            new_capacity = codeBuf->size + additional_bytes + 1024; // Add some extra space
-        }
-        
-        uint8_t* new_buffer = (uint8_t*)realloc(codeBuf->bytes, new_capacity);
-        if (!new_buffer) {
-            perror("realloc for code buffer");
-            exit(1);
-        }
-        
-        codeBuf->bytes = new_buffer;
-        codeBuf->capacity = new_capacity;
-    }
+/* Ensure there's enough space in the code buffer for additional bytes */
+static void ensure_code_buffer_capacity(CodeBuffer* codeBuf, size_t additional_bytes) {
+    ensure_buffer_capacity(codeBuf, additional_bytes);
+}
+
+/* Ensure there's enough space in a data buffer for additional bytes */
+static void ensure_data_buffer_capacity(DataBuffer* dataBuf, size_t additional_bytes) {
+    ensure_buffer_capacity(dataBuf, additional_bytes);
 }
 
 static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
@@ -571,7 +564,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
         if (is_memory_ref(dest))
         {
             /* Store to memory: move [symbol], reg */
-            ensure_buffer_capacity(codeBuf, 7); // Need 7 bytes
+            ensure_code_buffer_capacity(codeBuf, 7); // Need 7 bytes
             
             char *symbol = extract_memory_ref(dest);
             uint64_t addr = lookup_symbol(symbol);
@@ -591,7 +584,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
         else if (is_memory_ref(token))
         {
             /* Load from memory: move reg, [symbol] */
-            ensure_buffer_capacity(codeBuf, 7); // Need 7 bytes
+            ensure_code_buffer_capacity(codeBuf, 7); // Need 7 bytes
             
             char *symbol = extract_memory_ref(token);
             uint64_t addr = lookup_symbol(symbol);
@@ -617,7 +610,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
             /* For small values, use 32-bit move which zero-extends to 64 bits */
             if (val <= 0xffffffffULL)
             {
-                ensure_buffer_capacity(codeBuf, 7); // Need 7 bytes
+                ensure_code_buffer_capacity(codeBuf, 7); // Need 7 bytes
                 
                 codeBuf->bytes[codeBuf->size++] = 0x48;       /* REX.W */
                 codeBuf->bytes[codeBuf->size++] = 0xC7;       /* mov r/m64, imm32 */
@@ -627,7 +620,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
             }
             else
             {
-                ensure_buffer_capacity(codeBuf, 10); // Need 10 bytes
+                ensure_code_buffer_capacity(codeBuf, 10); // Need 10 bytes
                 
                 /* For large values, use movabs */
                 codeBuf->bytes[codeBuf->size++] = 0x48;       /* REX.W */
@@ -639,7 +632,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
         else
         {
             /* Move symbol address to register */
-            ensure_buffer_capacity(codeBuf, 7); // Need 7 bytes
+            ensure_code_buffer_capacity(codeBuf, 7); // Need 7 bytes
             
             uint64_t symVal = lookup_symbol(token);
             uint8_t reg = get_register_opcode(dest);
@@ -657,7 +650,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
     }
     else if (strncmp(trimmed, "call", 4) == 0)
     {
-        ensure_buffer_capacity(codeBuf, 2); // Need 2 bytes
+        ensure_code_buffer_capacity(codeBuf, 2); // Need 2 bytes
         
         /* syscall opcode */
         codeBuf->bytes[codeBuf->size++] = 0x0F;
@@ -667,7 +660,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
              strncmp(trimmed, "jumpgt", 6) == 0 ||
              strncmp(trimmed, "jumpeq", 6) == 0)
     {
-        ensure_buffer_capacity(codeBuf, 6); // Need 6 bytes
+        ensure_code_buffer_capacity(codeBuf, 6); // Need 6 bytes
         
         /* Get label name */
         char *label = strtok(trimmed + 6, " \t");
@@ -710,7 +703,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
     }
     else if (strncmp(trimmed, "jump", 4) == 0)
     {
-        ensure_buffer_capacity(codeBuf, 5); // Need 5 bytes
+        ensure_code_buffer_capacity(codeBuf, 5); // Need 5 bytes
         
         /* Get label name */
         char *label = strtok(trimmed + 4, " \t");
@@ -769,7 +762,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
 
         if (is_numeric(second))
         {
-            ensure_buffer_capacity(codeBuf, 7); // Need up to 7 bytes
+            ensure_code_buffer_capacity(codeBuf, 7); // Need up to 7 bytes
             
             uint64_t val = strtoull(second, NULL, 0);
             if (strncmp(trimmed, "comp", 4) == 0)
@@ -795,7 +788,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
         }
         else
         {
-            ensure_buffer_capacity(codeBuf, 3); // Need 3 bytes
+            ensure_code_buffer_capacity(codeBuf, 3); // Need 3 bytes
             
             /* Register-register operation */
             uint8_t reg2 = get_register_opcode(second);
@@ -834,7 +827,7 @@ static void process_data_buffer(DataBuffer *dataBuf, uint64_t dataBase)
             process_escape_sequences(dataDirectives[i].data.literal, processed);
             size_t len = strlen(processed) + 1; // Include null terminator
             
-            ensure_buffer_capacity(dataBuf, len);
+            ensure_data_buffer_capacity(dataBuf, len);
             
             memcpy(dataBuf->bytes + dataBuf->size, processed, len);
             dataBuf->size += len;
@@ -843,7 +836,7 @@ static void process_data_buffer(DataBuffer *dataBuf, uint64_t dataBase)
         {
             size_t size = dataDirectives[i].data.size;
             
-            ensure_buffer_capacity(dataBuf, size);
+            ensure_data_buffer_capacity(dataBuf, size);
             
             /* Zero-initialize the buffer */
             memset(dataBuf->bytes + dataBuf->size, 0, size);
@@ -855,8 +848,7 @@ static void process_data_buffer(DataBuffer *dataBuf, uint64_t dataBase)
             FILE *fp = fopen(dataDirectives[i].data.filename, "rb");
             if (!fp)
             {
-                fprintf(stderr, "Error: cannot open file '%s'\n", 
-                        dataDirectives[i].data.filename);
+                color_error("cannot open file '%s'", dataDirectives[i].data.filename);
                 exit(1);
             }
             
@@ -865,13 +857,12 @@ static void process_data_buffer(DataBuffer *dataBuf, uint64_t dataBase)
             size_t fileSize = ftell(fp);
             fseek(fp, 0, SEEK_SET);
             
-            ensure_buffer_capacity(dataBuf, fileSize);
+            ensure_data_buffer_capacity(dataBuf, fileSize);
             
             /* Read file into data buffer */
             if (fread(dataBuf->bytes + dataBuf->size, 1, fileSize, fp) != fileSize)
             {
-                fprintf(stderr, "Error: failed to read file '%s'\n",
-                        dataDirectives[i].data.filename);
+                color_error("failed to read file '%s'", dataDirectives[i].data.filename);
                 fclose(fp);
                 exit(1);
             }
@@ -882,7 +873,7 @@ static void process_data_buffer(DataBuffer *dataBuf, uint64_t dataBase)
         {
             size_t size = sizeof(dataDirectives[i].data.value);
             
-            ensure_buffer_capacity(dataBuf, size);
+            ensure_data_buffer_capacity(dataBuf, size);
             
             memcpy(dataBuf->bytes + dataBuf->size, &dataDirectives[i].data.value, size);
             dataBuf->size += size;
@@ -911,11 +902,37 @@ int assemble(const AssemblerOptions* options)
     symbolCount = 0;
     dataDirCount = 0;
     
+    if (options->verbose) {
+        color_section("Assembly Process");
+        color_info("Assembling file: %s", options->input_filename);
+    }
+    
     /* Read all lines from input. */
     size_t lineCount = read_all_lines(options->input_filename);
+    
+    if (options->verbose) {
+        color_info("Read %zu lines from input file", lineCount);
+    }
 
     /* First pass: simulate code emission and collect data directives */
     size_t simulatedCodeSize = first_pass(lineCount);
+    
+    if (options->verbose) {
+        color_section("First Pass Results");
+        color_info("Estimated code size: %zu bytes", simulatedCodeSize);
+        color_info("Found %zu data directives", dataDirCount);
+        color_info("Found %zu symbols", symbolCount);
+        
+        /* Display collected symbols if very verbose */
+        if (options->verbose > 1) {
+            color_section("Symbol Table");
+            for (size_t i = 0; i < symbolCount; i++) {
+                color_printf(COLOR_MAGENTA, "  %-20s", symbols[i].name);
+                color_printf(COLOR_RESET, " = ");
+                color_printf(COLOR_YELLOW, "0x%016lx\n", symbols[i].value);
+            }
+        }
+    }
 
     /* Data section begins after code section */
     uint64_t dataBase = BASE_ADDR + CODE_OFFSET + simulatedCodeSize;
@@ -930,6 +947,11 @@ int assemble(const AssemblerOptions* options)
     /* Process data directives and fill data buffer */
     process_data_buffer(&dataBuf, dataBase);
     
+    if (options->verbose) {
+        color_section("Data Processing");
+        color_info("Processed data directives. Total data size: %zu bytes", dataBuf.size);
+    }
+    
     /* Second pass: emit instructions (ignore data directives) */
     for (size_t i = 0; i < lineCount; i++)
     {
@@ -940,8 +962,23 @@ int assemble(const AssemblerOptions* options)
         emit_instruction_line(&codeBuf, trimmed);
     }
 
+    if (options->verbose) {
+        color_section("Second Pass Results");
+        color_info("Actual code size: %zu bytes", codeBuf.size);
+        color_info("Total binary size: %zu bytes", codeBuf.size + dataBuf.size);
+        color_info("Writing output to: %s", options->output_filename);
+    }
+
     /* Call the binary writer function */
     int result = options->writer(options->output_filename, &codeBuf, &dataBuf, entry_point);
+    
+    if (options->verbose) {
+        if (result == 0) {
+            color_success("Assembly completed successfully");
+        } else {
+            color_error("Assembly failed with code %d", result);
+        }
+    }
     
     /* Clean up */
     free_code_buffer(&codeBuf);

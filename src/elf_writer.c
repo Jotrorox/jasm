@@ -10,48 +10,6 @@
 #define CODE_OFFSET (ELF_HEADER_SIZE + PROGRAM_HEADER_SIZE)
 #define BASE_ADDR 0x400000
 
-/* Initialize code buffer with dynamic allocation */
-void init_code_buffer(CodeBuffer* buffer, size_t initial_capacity) {
-    buffer->bytes = (uint8_t*)malloc(initial_capacity);
-    if (!buffer->bytes) {
-        perror("malloc for code buffer");
-        exit(1);
-    }
-    buffer->size = 0;
-    buffer->capacity = initial_capacity;
-}
-
-/* Initialize data buffer with dynamic allocation */
-void init_data_buffer(DataBuffer* buffer, size_t initial_capacity) {
-    buffer->bytes = (uint8_t*)malloc(initial_capacity);
-    if (!buffer->bytes) {
-        perror("malloc for data buffer");
-        exit(1);
-    }
-    buffer->size = 0;
-    buffer->capacity = initial_capacity;
-}
-
-/* Free allocated memory in code buffer */
-void free_code_buffer(CodeBuffer* buffer) {
-    if (buffer->bytes) {
-        free(buffer->bytes);
-        buffer->bytes = NULL;
-    }
-    buffer->size = 0;
-    buffer->capacity = 0;
-}
-
-/* Free allocated memory in data buffer */
-void free_data_buffer(DataBuffer* buffer) {
-    if (buffer->bytes) {
-        free(buffer->bytes);
-        buffer->bytes = NULL;
-    }
-    buffer->size = 0;
-    buffer->capacity = 0;
-}
-
 /* Write the assembled code and data as an ELF executable file */
 int write_elf_file(const char* outfile, CodeBuffer* codeBuf, DataBuffer* dataBuf, uint64_t entry_point) {
     size_t file_size = CODE_OFFSET + codeBuf->size + dataBuf->size;
