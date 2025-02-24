@@ -8,6 +8,8 @@
    This format just outputs the raw machine code and data, without any headers.
 */
 int write_binary_file(const char* outfile, CodeBuffer* codeBuf, DataBuffer* dataBuf, uint64_t entry_point) {
+    (void)entry_point;
+
     /* For raw binary format, we just write the code and data sections consecutively */
     size_t total_size = codeBuf->size + dataBuf->size;
     uint8_t* combined_buffer = malloc(total_size);

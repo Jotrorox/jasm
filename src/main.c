@@ -5,6 +5,7 @@
 #include "assembler.h"
 #include "binary_writer.h"
 #include "color_utils.h"
+#include "syntax.h"
 
 #define VERSION "0.1"
 
@@ -95,6 +96,9 @@ int main(int argc, char **argv) {
     
     /* Initialize color utilities */
     color_init();
+    
+    /* Initialize syntax module */
+    syntax_init();
     
     /* Parse command line arguments */
     for (int i = 1; i < argc; i++) {
