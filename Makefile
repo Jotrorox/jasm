@@ -37,6 +37,10 @@ $(TARGET): $(OBJS)
 clean:
 	rm -rf $(BUILD_DIR)
 
+# Target to build with verbose output
+verbose: CFLAGS += -DVERBOSE
+verbose: all
+
 release: CFLAGS += $(RELEASEFLAGS)
 release: all
 

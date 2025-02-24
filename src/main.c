@@ -14,7 +14,7 @@ int main(int argc, char **argv)
     // Use provided output name if given, otherwise use default
     const char *output_file = (argc == 3) ? argv[2] : output_name;
 
-    int result = assemble(argv[1], output_file);
+    int result = assemble_to_elf(argv[1], output_file);
     if (result == 0)
     {
         // Make the output file executable (rwxr-xr-x)

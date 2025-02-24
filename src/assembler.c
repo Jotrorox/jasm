@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <ctype.h>
 #include "assembler.h"
+#include "binary_writer.h"
 
 /* ---- Internal Constants and Structures ---- */
 
@@ -511,6 +512,25 @@ static uint8_t get_register_opcode(const char *reg)
     exit(1);
 }
 
+/* Ensure there's enough space in a buffer for additional bytes */
+static void ensure_buffer_capacity(CodeBuffer* codeBuf, size_t additional_bytes) {
+    if (codeBuf->size + additional_bytes > codeBuf->capacity) {
+        size_t new_capacity = codeBuf->capacity * 2;
+        if (new_capacity < codeBuf->size + additional_bytes) {
+            new_capacity = codeBuf->size + additional_bytes + 1024; // Add some extra space
+        }
+        
+        uint8_t* new_buffer = (uint8_t*)realloc(codeBuf->bytes, new_capacity);
+        if (!new_buffer) {
+            perror("realloc for code buffer");
+            exit(1);
+        }
+        
+        codeBuf->bytes = new_buffer;
+        codeBuf->capacity = new_capacity;
+    }
+}
+
 static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
 {
     char buf[MAX_LINE_LEN];
@@ -551,6 +571,8 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
         if (is_memory_ref(dest))
         {
             /* Store to memory: move [symbol], reg */
+            ensure_buffer_capacity(codeBuf, 7); // Need 7 bytes
+            
             char *symbol = extract_memory_ref(dest);
             uint64_t addr = lookup_symbol(symbol);
             uint8_t reg = get_register_opcode(token);
@@ -569,6 +591,8 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
         else if (is_memory_ref(token))
         {
             /* Load from memory: move reg, [symbol] */
+            ensure_buffer_capacity(codeBuf, 7); // Need 7 bytes
+            
             char *symbol = extract_memory_ref(token);
             uint64_t addr = lookup_symbol(symbol);
             uint8_t reg = get_register_opcode(dest);
@@ -593,6 +617,8 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
             /* For small values, use 32-bit move which zero-extends to 64 bits */
             if (val <= 0xffffffffULL)
             {
+                ensure_buffer_capacity(codeBuf, 7); // Need 7 bytes
+                
                 codeBuf->bytes[codeBuf->size++] = 0x48;       /* REX.W */
                 codeBuf->bytes[codeBuf->size++] = 0xC7;       /* mov r/m64, imm32 */
                 codeBuf->bytes[codeBuf->size++] = 0xC0 | reg; /* ModR/M: register direct */
@@ -601,6 +627,8 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
             }
             else
             {
+                ensure_buffer_capacity(codeBuf, 10); // Need 10 bytes
+                
                 /* For large values, use movabs */
                 codeBuf->bytes[codeBuf->size++] = 0x48;       /* REX.W */
                 codeBuf->bytes[codeBuf->size++] = 0xB8 + reg; /* movabs r64, imm64 */
@@ -611,6 +639,8 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
         else
         {
             /* Move symbol address to register */
+            ensure_buffer_capacity(codeBuf, 7); // Need 7 bytes
+            
             uint64_t symVal = lookup_symbol(token);
             uint8_t reg = get_register_opcode(dest);
 
@@ -627,6 +657,8 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
     }
     else if (strncmp(trimmed, "call", 4) == 0)
     {
+        ensure_buffer_capacity(codeBuf, 2); // Need 2 bytes
+        
         /* syscall opcode */
         codeBuf->bytes[codeBuf->size++] = 0x0F;
         codeBuf->bytes[codeBuf->size++] = 0x05;
@@ -635,6 +667,8 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
              strncmp(trimmed, "jumpgt", 6) == 0 ||
              strncmp(trimmed, "jumpeq", 6) == 0)
     {
+        ensure_buffer_capacity(codeBuf, 6); // Need 6 bytes
+        
         /* Get label name */
         char *label = strtok(trimmed + 6, " \t");
         if (!label)
@@ -676,6 +710,8 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
     }
     else if (strncmp(trimmed, "jump", 4) == 0)
     {
+        ensure_buffer_capacity(codeBuf, 5); // Need 5 bytes
+        
         /* Get label name */
         char *label = strtok(trimmed + 4, " \t");
         if (!label)
@@ -733,6 +769,8 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
 
         if (is_numeric(second))
         {
+            ensure_buffer_capacity(codeBuf, 7); // Need up to 7 bytes
+            
             uint64_t val = strtoull(second, NULL, 0);
             if (strncmp(trimmed, "comp", 4) == 0)
             {
@@ -757,6 +795,8 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
         }
         else
         {
+            ensure_buffer_capacity(codeBuf, 3); // Need 3 bytes
+            
             /* Register-register operation */
             uint8_t reg2 = get_register_opcode(second);
             codeBuf->bytes[codeBuf->size++] = 0x48; /* REX.W */
@@ -779,141 +819,35 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
     }
 }
 
-/* ---- ELF File Writing ---- */
-
-static void write_elf(const char *outfile, CodeBuffer *codeBuf, DataBuffer *dataBuf)
+/* Process data directives and copy data to the data buffer */
+static void process_data_buffer(DataBuffer *dataBuf, uint64_t dataBase)
 {
-    size_t file_size = CODE_OFFSET + codeBuf->size + dataBuf->size;
-    uint8_t *file_buf = calloc(1, file_size);
-    if (!file_buf)
-    {
-        perror("calloc");
-        exit(1);
-    }
-    uint8_t *p = file_buf;
-    /* Construct ELF header */
-    typedef struct
-    {
-        uint8_t e_ident[16];
-        uint16_t e_type;
-        uint16_t e_machine;
-        uint32_t e_version;
-        uint64_t e_entry;
-        uint64_t e_phoff;
-        uint64_t e_shoff;
-        uint32_t e_flags;
-        uint16_t e_ehsize;
-        uint16_t e_phentsize;
-        uint16_t e_phnum;
-        uint16_t e_shentsize;
-        uint16_t e_shnum;
-        uint16_t e_shstrndx;
-    } Elf64_Ehdr;
-    Elf64_Ehdr eh = {0};
-    memcpy(eh.e_ident, "\177ELF\2\1\1\0", 8);
-    eh.e_type = 2;       /* EXEC */
-    eh.e_machine = 0x3E; /* AMD x86-64 */
-    eh.e_version = 1;
-    eh.e_entry = BASE_ADDR + CODE_OFFSET;
-    eh.e_phoff = ELF_HEADER_SIZE;
-    eh.e_shoff = 0;
-    eh.e_flags = 0;
-    eh.e_ehsize = ELF_HEADER_SIZE;
-    eh.e_phentsize = PROGRAM_HEADER_SIZE;
-    eh.e_phnum = 1;
-    memcpy(p, &eh, ELF_HEADER_SIZE);
-
-    p = file_buf + ELF_HEADER_SIZE;
-    /* Construct Program Header */
-    typedef struct
-    {
-        uint32_t p_type;
-        uint32_t p_flags;
-        uint64_t p_offset;
-        uint64_t p_vaddr;
-        uint64_t p_paddr;
-        uint64_t p_filesz;
-        uint64_t p_memsz;
-        uint64_t p_align;
-    } Elf64_Phdr;
-    Elf64_Phdr ph = {0};
-    ph.p_type = 1;                           /* PT_LOAD */
-    ph.p_flags = 7; /* PF_R | PF_W | PF_X */ // Make segment readable, writable and executable
-    ph.p_offset = 0;
-    ph.p_vaddr = BASE_ADDR;
-    ph.p_paddr = BASE_ADDR;
-    ph.p_filesz = file_size;
-    ph.p_memsz = file_size;
-    ph.p_align = 0x1000;
-    memcpy(p, &ph, PROGRAM_HEADER_SIZE);
-
-    /* Copy code section */
-    memcpy(file_buf + CODE_OFFSET, codeBuf->bytes, codeBuf->size);
-    /* Append data section */
-    memcpy(file_buf + CODE_OFFSET + codeBuf->size, dataBuf->bytes, dataBuf->size);
-
-    FILE *out = fopen(outfile, "wb");
-    if (!out)
-    {
-        perror("fopen");
-        exit(1);
-    }
-    if (fwrite(file_buf, 1, file_size, out) != file_size)
-    {
-        perror("fwrite");
-        exit(1);
-    }
-    fclose(out);
-    free(file_buf);
-    printf("Assembled %zu bytes of machine code and %zu bytes of data into ELF file: %s\n",
-           codeBuf->size, dataBuf->size, outfile);
-}
-
-/* ---- Public Function: assemble() ---- */
-
-/* The assemble() function processes the input assembly file and creates an output ELF binary. */
-int assemble(const char *input_filename, const char *output_filename)
-{
-    /* Read all lines from input. */
-    size_t lineCount = read_all_lines(input_filename);
-
-    /* First pass: simulate code emission and collect data directives */
-    size_t simulatedCodeSize = first_pass(lineCount);
-
-    /* Data section begins at: BASE_ADDR + CODE_OFFSET + simulatedCodeSize */
-    uint64_t dataBase = BASE_ADDR + CODE_OFFSET + simulatedCodeSize;
-
-    DataBuffer dataBuf = {.size = 0};
     /* Process collected data directives: assign symbol addresses and emit data */
     for (size_t i = 0; i < dataDirCount; i++)
     {
-        uint64_t addr = dataBase + dataBuf.size;
+        uint64_t addr = dataBase + dataBuf->size;
         add_symbol(dataDirectives[i].label, addr);
 
         if (dataDirectives[i].type == DATA_STRING)
         {
             char processed[MAX_LINE_LEN];
             process_escape_sequences(dataDirectives[i].data.literal, processed);
-            size_t len = strlen(processed);             // Don't include null terminator in length for sys_write
-            if (dataBuf.size + len + 1 > MAX_DATA_SIZE) // But allocate space for it
-            {
-                fprintf(stderr, "Error: data buffer overflow\n");
-                exit(1);
-            }
-            memcpy(dataBuf.bytes + dataBuf.size, processed, len + 1); // Copy with null terminator
-            dataBuf.size += len + 1;
+            size_t len = strlen(processed) + 1; // Include null terminator
+            
+            ensure_buffer_capacity(dataBuf, len);
+            
+            memcpy(dataBuf->bytes + dataBuf->size, processed, len);
+            dataBuf->size += len;
         }
         else if (dataDirectives[i].type == DATA_BUFFER)
         {
             size_t size = dataDirectives[i].data.size;
-            if (dataBuf.size + size > MAX_DATA_SIZE)
-            {
-                fprintf(stderr, "Error: data buffer overflow\n");
-                exit(1);
-            }
+            
+            ensure_buffer_capacity(dataBuf, size);
+            
             /* Zero-initialize the buffer */
-            memset(dataBuf.bytes + dataBuf.size, 0, size);
-            dataBuf.size += size;
+            memset(dataBuf->bytes + dataBuf->size, 0, size);
+            dataBuf->size += size;
         }
         else if (dataDirectives[i].type == DATA_FILE)
         {
@@ -931,17 +865,10 @@ int assemble(const char *input_filename, const char *output_filename)
             size_t fileSize = ftell(fp);
             fseek(fp, 0, SEEK_SET);
             
-            /* Check size */
-            if (dataBuf.size + fileSize > MAX_DATA_SIZE)
-            {
-                fprintf(stderr, "Error: file '%s' too large\n",
-                        dataDirectives[i].data.filename);
-                fclose(fp);
-                exit(1);
-            }
+            ensure_buffer_capacity(dataBuf, fileSize);
             
             /* Read file into data buffer */
-            if (fread(dataBuf.bytes + dataBuf.size, 1, fileSize, fp) != fileSize)
+            if (fread(dataBuf->bytes + dataBuf->size, 1, fileSize, fp) != fileSize)
             {
                 fprintf(stderr, "Error: failed to read file '%s'\n",
                         dataDirectives[i].data.filename);
@@ -949,21 +876,60 @@ int assemble(const char *input_filename, const char *output_filename)
                 exit(1);
             }
             fclose(fp);
-            dataBuf.size += fileSize;
+            dataBuf->size += fileSize;
         }
         else /* DATA_RAW */
         {
-            if (dataBuf.size + sizeof(dataDirectives[i].data.value) > MAX_DATA_SIZE)
-            {
-                fprintf(stderr, "Error: data buffer overflow\n");
-                exit(1);
-            }
-            memcpy(dataBuf.bytes + dataBuf.size, &dataDirectives[i].data.value, sizeof(dataDirectives[i].data.value));
-            dataBuf.size += sizeof(dataDirectives[i].data.value);
+            size_t size = sizeof(dataDirectives[i].data.value);
+            
+            ensure_buffer_capacity(dataBuf, size);
+            
+            memcpy(dataBuf->bytes + dataBuf->size, &dataDirectives[i].data.value, size);
+            dataBuf->size += size;
         }
     }
+}
 
-    CodeBuffer codeBuf = {.size = 0};
+/* ---- Main Assembly Function ---- */
+
+/* Convenience wrapper for ELF output */
+int assemble_to_elf(const char* input_filename, const char* output_filename) {
+    AssemblerOptions options = {
+        .input_filename = input_filename,
+        .output_filename = output_filename,
+        .writer = write_elf_file,
+        .verbose = 0
+    };
+    return assemble(&options);
+}
+
+/* The main assembly function that processes the input assembly file,
+   generates code and data, and calls the binary writer function. */
+int assemble(const AssemblerOptions* options)
+{
+    /* Reset global state for multiple invocations */
+    symbolCount = 0;
+    dataDirCount = 0;
+    
+    /* Read all lines from input. */
+    size_t lineCount = read_all_lines(options->input_filename);
+
+    /* First pass: simulate code emission and collect data directives */
+    size_t simulatedCodeSize = first_pass(lineCount);
+
+    /* Data section begins after code section */
+    uint64_t dataBase = BASE_ADDR + CODE_OFFSET + simulatedCodeSize;
+    uint64_t entry_point = BASE_ADDR + CODE_OFFSET;
+
+    /* Initialize dynamically allocated buffers */
+    CodeBuffer codeBuf;
+    DataBuffer dataBuf;
+    init_code_buffer(&codeBuf, simulatedCodeSize > 0 ? simulatedCodeSize : 1024);
+    init_data_buffer(&dataBuf, 1024);  // Start with a reasonable default size
+    
+    /* Process data directives and fill data buffer */
+    process_data_buffer(&dataBuf, dataBase);
+    
     /* Second pass: emit instructions (ignore data directives) */
     for (size_t i = 0; i < lineCount; i++)
     {
@@ -974,6 +940,12 @@ int assemble(const char *input_filename, const char *output_filename)
         emit_instruction_line(&codeBuf, trimmed);
     }
 
-    write_elf(output_filename, &codeBuf, &dataBuf);
-    return 0;
+    /* Call the binary writer function */
+    int result = options->writer(options->output_filename, &codeBuf, &dataBuf, entry_point);
+    
+    /* Clean up */
+    free_code_buffer(&codeBuf);
+    free_data_buffer(&dataBuf);
+    
+    return result;
 }

@@ -3,36 +3,34 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "binary_writer.h" /* Include our new interface */
 
-/* Constants */
+/* Constants for assembly processing */
 #define MAX_LINE_LEN 256
 #define MAX_LINES 1024
-#define MAX_CODE_SIZE 4096
-#define MAX_DATA_SIZE 4096
 #define MAX_SYMBOLS 100
 
-/* ELF file related constants. */
-#define ELF_HEADER_SIZE 64
-#define PROGRAM_HEADER_SIZE 56
-#define CODE_OFFSET (ELF_HEADER_SIZE + PROGRAM_HEADER_SIZE)
+/* Base address for code (used to calculate entry point and symbol addresses) */
 #define BASE_ADDR 0x400000
+#define CODE_OFFSET 120  /* Reasonable offset for most formats */
 
-/* Data structures for code and data sections. */
-typedef struct
-{
-    uint8_t bytes[MAX_CODE_SIZE];
-    size_t size;
-} CodeBuffer;
+/* Assembly options struct to control the assembler behavior */
+typedef struct {
+    const char* input_filename;    /* Source file to assemble */
+    const char* output_filename;   /* Output binary file name */
+    binary_writer_fn writer;       /* Function to write the output binary */
+    int verbose;                   /* Enable verbose output */
+} AssemblerOptions;
 
-typedef struct
-{
-    uint8_t bytes[MAX_DATA_SIZE];
-    size_t size;
-} DataBuffer;
-
-/* The assembler module provides a single function to assemble an input file
-   into an ELF executable.
+/* The assembler module provides functions to assemble an input file
+   into different binary formats.
 */
-int assemble(const char *input_filename, const char *output_filename);
+
+/* Main assembly function - processes the input file and generates
+   code and data buffers, then uses the specified writer to create output */
+int assemble(const AssemblerOptions* options);
+
+/* Predefined writer functions for supported formats */
+int assemble_to_elf(const char* input_filename, const char* output_filename);
 
 #endif // ASSEMBLER_H
