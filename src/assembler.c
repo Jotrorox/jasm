@@ -15,12 +15,14 @@ typedef struct
     {
         DATA_STRING, /* String literal */
         DATA_BUFFER, /* Raw buffer of given size */
+        DATA_FILE,   /* File inclusion */
         DATA_RAW,    /* Raw numeric value */
     } type;
     union
     {
         char literal[MAX_LINE_LEN];
         size_t size;
+        char filename[MAX_LINE_LEN];
         uint64_t value;  /* For raw numeric values */
     } data;
 } DataDirective;
@@ -147,6 +149,7 @@ static char *extract_memory_ref(const char *str)
    Formats supported:
    - data <label> "string literal"
    - data <label> size <number>
+   - data <label> file <filename>
    - data <label> 0x1234ABCD    (hex)
    - data <label> 0b10110011    (binary)
    - data <label> 123           (decimal)
@@ -187,6 +190,25 @@ static void process_data_directive(char *trimmed)
         *endQuote = '\0';
         strncpy(dataDirectives[dataDirCount].data.literal, value, sizeof(dataDirectives[dataDirCount].data.literal) - 1);
         dataDirectives[dataDirCount].data.literal[sizeof(dataDirectives[dataDirCount].data.literal) - 1] = '\0';
+    }
+    else if (strncmp(value, "file", 4) == 0)
+    {
+        /* File inclusion */
+        dataDirectives[dataDirCount].type = DATA_FILE;
+        
+        /* Get filename after "file" keyword */
+        char *filename = value + 4;
+        filename = trim(filename);
+        if (!filename || !*filename)
+        {
+            fprintf(stderr, "Error: file directive requires a filename\n");
+            exit(1);
+        }
+        
+        strncpy(dataDirectives[dataDirCount].data.filename, filename, 
+                sizeof(dataDirectives[dataDirCount].data.filename) - 1);
+        dataDirectives[dataDirCount].data.filename[
+            sizeof(dataDirectives[dataDirCount].data.filename) - 1] = '\0';
     }
     else if (strncmp(value, "size", 4) == 0)
     {
@@ -892,6 +914,42 @@ int assemble(const char *input_filename, const char *output_filename)
             /* Zero-initialize the buffer */
             memset(dataBuf.bytes + dataBuf.size, 0, size);
             dataBuf.size += size;
+        }
+        else if (dataDirectives[i].type == DATA_FILE)
+        {
+            /* Read file contents */
+            FILE *fp = fopen(dataDirectives[i].data.filename, "rb");
+            if (!fp)
+            {
+                fprintf(stderr, "Error: cannot open file '%s'\n", 
+                        dataDirectives[i].data.filename);
+                exit(1);
+            }
+            
+            /* Get file size */
+            fseek(fp, 0, SEEK_END);
+            size_t fileSize = ftell(fp);
+            fseek(fp, 0, SEEK_SET);
+            
+            /* Check size */
+            if (dataBuf.size + fileSize > MAX_DATA_SIZE)
+            {
+                fprintf(stderr, "Error: file '%s' too large\n",
+                        dataDirectives[i].data.filename);
+                fclose(fp);
+                exit(1);
+            }
+            
+            /* Read file into data buffer */
+            if (fread(dataBuf.bytes + dataBuf.size, 1, fileSize, fp) != fileSize)
+            {
+                fprintf(stderr, "Error: failed to read file '%s'\n",
+                        dataDirectives[i].data.filename);
+                fclose(fp);
+                exit(1);
+            }
+            fclose(fp);
+            dataBuf.size += fileSize;
         }
         else /* DATA_RAW */
         {
