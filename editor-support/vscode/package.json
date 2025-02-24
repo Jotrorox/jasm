@@ -2,7 +2,7 @@
   "name": "jasm-support",
   "displayName": "jasm Support",
   "description": "A simple vscode extension providing syntax highlighting for jasm",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/Jotrorox/jasm"
@@ -29,6 +29,12 @@
       "language": "jasm",
       "scopeName": "source.jasm",
       "path": "./syntaxes/jasm.tmLanguage.json"
-    }]
+    }],
+    "snippets": [
+      {
+        "language": "jasm",
+        "path": "./snippets/jasm.json"
+      }
+    ]
   }
 }
