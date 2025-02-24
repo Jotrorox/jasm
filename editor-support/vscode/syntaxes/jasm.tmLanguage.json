@@ -18,7 +18,7 @@
             "include": "#comments"
         },
         {
-            "include": "#variables"
+            "include": "#dataDirectives"
         },
         {
             "include": "#labelDefinitions"
@@ -40,15 +40,23 @@
             "patterns": [
                 {
                     "name": "variable.register.jasm",
-                    "match": "\\b(?:r(ax|di|si|dx|cx|bp|sp)|r(?:8|9|10|11|12|13|14|15))\\b"
+                    "match": "\\b(rax|rcx|rdx|rbx|rsi|rdi)\\b"
                 }
             ]
         },
         "numbers": {
             "patterns": [
                 {
-                    "name": "constant.numeric.jasm",
-                    "match": "\\b\\d+\\b"
+                    "name": "constant.numeric.hex.jasm",
+                    "match": "\\b0[xX][0-9a-fA-F]+\\b"
+                },
+                {
+                    "name": "constant.numeric.binary.jasm",
+                    "match": "\\b0[bB][01]+\\b"
+                },
+                {
+                    "name": "constant.numeric.decimal.jasm",
+                    "match": "\\b[0-9]+\\b"
                 }
             ]
         },
@@ -59,7 +67,7 @@
             "patterns": [
                 {
                     "name": "constant.character.escape.jasm",
-                    "match": "\\\\."
+                    "match": "\\\\[ntr\\\\\"]"
                 }
             ]
         },
@@ -71,18 +79,23 @@
                 }
             ]
         },
-        "variables": {
+        "dataDirectives": {
             "patterns": [
                 {
-                    "name": "variable.other.jasm",
-                    "match": "(?<=\\bdata\\s)[A-Za-z_][A-Za-z0-9_]*"
+                    "match": "(data)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s+(size|file)\\s+([A-Za-z0-9_\\.]+)",
+                    "captures": {
+                        "1": { "name": "keyword.control.jasm" },
+                        "2": { "name": "variable.other.jasm" },
+                        "3": { "name": "keyword.other.jasm" },
+                        "4": { "name": "string.unquoted.jasm" }
+                    }
                 }
             ]
         },
         "labelDefinitions": {
             "patterns": [
                 {
-                    "name": "entity.name.label.jasm",
+                    "name": "entity.name.function.jasm",
                     "match": "^[A-Za-z_][A-Za-z0-9_]*:"
                 }
             ]
@@ -90,8 +103,8 @@
         "labelReferences": {
             "patterns": [
                 {
-                    "name": "variable.other.label.jasm",
-                    "match": "(?<!\\bdata\\s)\\b[A-Za-z_][A-Za-z0-9_]*\\b"
+                    "name": "variable.other.jasm",
+                    "match": "(?<=\\s|\\[)[A-Za-z_][A-Za-z0-9_]*(?=\\s|\\]|$)"
                 }
             ]
         }
