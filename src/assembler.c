@@ -15,11 +15,13 @@ typedef struct
     {
         DATA_STRING, /* String literal */
         DATA_BUFFER, /* Raw buffer of given size */
+        DATA_RAW,    /* Raw numeric value */
     } type;
     union
     {
         char literal[MAX_LINE_LEN];
         size_t size;
+        uint64_t value;  /* For raw numeric values */
     } data;
 } DataDirective;
 
@@ -145,6 +147,9 @@ static char *extract_memory_ref(const char *str)
    Formats supported:
    - data <label> "string literal"
    - data <label> size <number>
+   - data <label> 0x1234ABCD    (hex)
+   - data <label> 0b10110011    (binary)
+   - data <label> 123           (decimal)
 */
 static void process_data_directive(char *trimmed)
 {
@@ -196,9 +201,47 @@ static void process_data_directive(char *trimmed)
         }
         dataDirectives[dataDirCount].data.size = strtoull(sizeStr, NULL, 0);
     }
+    else if (value[0] == '0' && (value[1] == 'x' || value[1] == 'X' || value[1] == 'b' || value[1] == 'B'))
+    {
+        /* Hex or binary value */
+        dataDirectives[dataDirCount].type = DATA_RAW;
+        char *endptr;
+        if (value[1] == 'x' || value[1] == 'X')
+        {
+            dataDirectives[dataDirCount].data.value = strtoull(value, &endptr, 16);
+        }
+        else /* binary */
+        {
+            /* Skip 0b prefix */
+            value += 2;
+            dataDirectives[dataDirCount].data.value = 0;
+            while (*value == '0' || *value == '1')
+            {
+                dataDirectives[dataDirCount].data.value = (dataDirectives[dataDirCount].data.value << 1) | (*value - '0');
+                value++;
+            }
+            if (*value && !isspace((unsigned char)*value))
+            {
+                fprintf(stderr, "Error: invalid binary number\n");
+                exit(1);
+            }
+        }
+    }
+    else if (isdigit((unsigned char)value[0]) || value[0] == '-')
+    {
+        /* Decimal value */
+        dataDirectives[dataDirCount].type = DATA_RAW;
+        char *endptr;
+        dataDirectives[dataDirCount].data.value = strtoull(value, &endptr, 10);
+        if (*endptr && !isspace((unsigned char)*endptr))
+        {
+            fprintf(stderr, "Error: invalid decimal number\n");
+            exit(1);
+        }
+    }
     else
     {
-        fprintf(stderr, "Error: data directive requires either a string literal or 'size <number>'\n");
+        fprintf(stderr, "Error: data directive requires a string literal, 'size <number>', or a numeric value (decimal, 0x... for hex, 0b... for binary)\n");
         exit(1);
     }
     dataDirCount++;
@@ -838,7 +881,7 @@ int assemble(const char *input_filename, const char *output_filename)
             memcpy(dataBuf.bytes + dataBuf.size, processed, len + 1); // Copy with null terminator
             dataBuf.size += len + 1;
         }
-        else /* DATA_BUFFER */
+        else if (dataDirectives[i].type == DATA_BUFFER)
         {
             size_t size = dataDirectives[i].data.size;
             if (dataBuf.size + size > MAX_DATA_SIZE)
@@ -849,6 +892,16 @@ int assemble(const char *input_filename, const char *output_filename)
             /* Zero-initialize the buffer */
             memset(dataBuf.bytes + dataBuf.size, 0, size);
             dataBuf.size += size;
+        }
+        else /* DATA_RAW */
+        {
+            if (dataBuf.size + sizeof(dataDirectives[i].data.value) > MAX_DATA_SIZE)
+            {
+                fprintf(stderr, "Error: data buffer overflow\n");
+                exit(1);
+            }
+            memcpy(dataBuf.bytes + dataBuf.size, &dataDirectives[i].data.value, sizeof(dataDirectives[i].data.value));
+            dataBuf.size += sizeof(dataDirectives[i].data.value);
         }
     }
 

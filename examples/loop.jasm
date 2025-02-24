@@ -1,11 +1,12 @@
 # Example: Print numbers 1 to 5 to console
-# Each number is printed on a new line
-# Uses sys_write syscall to print and converts numbers to ASCII
+# Syscall details:
+#   sys_write: rax=1, rdi=stdout, rsi=buffer, rdx=length
 
 # Initialize counter to 1
 move rax, 1
 move [counter], rax
 
+# Define the loop start label
 loop_start:
     # Print "Count: " prefix
     move rax, 1          # sys_write
@@ -16,7 +17,7 @@ loop_start:
 
     # Convert current number to ASCII
     move rax, [counter]
-    move rbx, 48         # ASCII '0' is 48
+    move rbx, 48          # ASCII '0' is 48
     add rax, rbx         # Convert to ASCII digit
     move [number_buf], rax
 
@@ -54,5 +55,5 @@ call
 # Data section
 data counter size 8       # 64-bit counter
 data number_buf size 1    # Buffer for ASCII digit
-data count_str "Count: "
-data newline "\n"        # Newline character
+data count_str "Count: "  # Prefix string
+data newline "\n"         # Newline character
