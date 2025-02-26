@@ -1,4 +1,23 @@
-build/
+# CMake build directory
+/build/
+
+# CMake cache and temporary files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cmake
+compile_commands.json
+
+# Editor specific files
+.vscode/
+.idea/
+
+# Binary files
+*.o
 *.out
-data.txt
+*.exe
+jasm
+
+# Test files
 output.txt

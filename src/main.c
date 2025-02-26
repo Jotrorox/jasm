@@ -16,6 +16,25 @@ typedef enum {
     FORMAT_UNKNOWN
 } OutputFormat;
 
+/* Function prototypes */
+static void print_usage(const char *program_name);
+static void print_version(void);
+static OutputFormat parse_format(const char *format_str);
+static int process_arguments(int argc, char **argv, const char **input_file, 
+                            const char **output_file, OutputFormat *output_format, int *verbose);
+static void print_assembly_info(const char *input_file, const char *output_file, OutputFormat output_format);
+
+/* External binary writer functions - these are implemented elsewhere */
+extern int write_elf_file(const char* output_filename, 
+                         CodeBuffer* codeBuf, 
+                         DataBuffer* dataBuf,
+                         uint64_t entry_point);
+                         
+extern int write_binary_file(const char* output_filename, 
+                            CodeBuffer* codeBuf, 
+                            DataBuffer* dataBuf,
+                            uint64_t entry_point);
+
 /* Print usage information */
 static void print_usage(const char *program_name) {
     printf("\n");
@@ -62,7 +81,7 @@ static void print_usage(const char *program_name) {
 }
 
 /* Print version information */
-static void print_version() {
+static void print_version(void) {
     color_printf(COLOR_BOLD COLOR_BRIGHT_BLUE, "JASM Assembler v%s\n", VERSION);
     color_printf(COLOR_BRIGHT_WHITE, "Copyright (c) 2025 Johannes (Jotrorox) Müller\n");
 }
@@ -80,36 +99,21 @@ static OutputFormat parse_format(const char *format_str) {
         return FORMAT_UNKNOWN;
 }
 
-/* Prototype for binary format writer (to be implemented) */
-int write_binary_file(const char* output_filename, 
-                     CodeBuffer* codeBuf, 
-                     DataBuffer* dataBuf,
-                     uint64_t entry_point);
-
-int main(int argc, char **argv) {
-    const char *output_name = "a.out";
-    const char *input_file = NULL;
-    const char *output_file = NULL;
+/* Process command line arguments */
+static int process_arguments(int argc, char **argv, const char **input_file, 
+                            const char **output_file, OutputFormat *output_format, int *verbose) {
     const char *format_str = NULL;
-    int verbose = 0;
-    OutputFormat output_format = FORMAT_ELF;
-    
-    /* Initialize color utilities */
-    color_init();
-    
-    /* Initialize syntax module */
-    syntax_init();
     
     /* Parse command line arguments */
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             print_usage(argv[0]);
-            return 0;
+            return -1; /* Special return code to indicate early exit */
         } else if (strcmp(argv[i], "-V") == 0 || strcmp(argv[i], "--version") == 0) {
             print_version();
-            return 0;
+            return -1; /* Special return code to indicate early exit */
         } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
-            verbose = 1;
+            *verbose = 1;
         } else if (strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--format") == 0) {
             if (i + 1 < argc) {
                 format_str = argv[++i];
@@ -120,10 +124,10 @@ int main(int argc, char **argv) {
         } else if (argv[i][0] == '-') {
             color_error("Unknown option '%s'", argv[i]);
             return 1;
-        } else if (!input_file) {
-            input_file = argv[i];
-        } else if (!output_file) {
-            output_file = argv[i];
+        } else if (!*input_file) {
+            *input_file = argv[i];
+        } else if (!*output_file) {
+            *output_file = argv[i];
         } else {
             color_error("Too many arguments");
             return 1;
@@ -131,61 +135,79 @@ int main(int argc, char **argv) {
     }
     
     /* Check if input file was provided */
-    if (!input_file) {
+    if (!*input_file) {
         color_error("No input file specified");
         print_usage(argv[0]);
         return 1;
     }
     
-    /* If no output file was specified, use the default */
-    if (!output_file) {
-        output_file = output_name;
+    /* Parse the output format */
+    if (format_str) {
+        *output_format = parse_format(format_str);
+        if (*output_format == FORMAT_UNKNOWN) {
+            color_error("Unknown output format '%s'", format_str);
+            return 1;
+        }
     }
     
-    /* Parse the output format */
-    output_format = parse_format(format_str);
-    if (output_format == FORMAT_UNKNOWN) {
-        color_error("Unknown output format '%s'", format_str);
-        return 1;
+    return 0;
+}
+
+/* Print assembly information if verbose mode is enabled */
+static void print_assembly_info(const char *input_file, const char *output_file, OutputFormat output_format) {
+    printf("\n");
+    color_printf(COLOR_BOLD COLOR_BRIGHT_BLUE, "JASM Assembler v%s\n", VERSION);
+    color_printf(COLOR_BRIGHT_CYAN, "----------------------------------------\n");
+    color_printf(COLOR_RESET, "Input file:  ");
+    color_printf(COLOR_BRIGHT_WHITE, "%s\n", input_file);
+    color_printf(COLOR_RESET, "Output file: ");
+    color_printf(COLOR_BRIGHT_WHITE, "%s\n", output_file);
+    color_printf(COLOR_RESET, "Format:      ");
+    color_printf(COLOR_BRIGHT_YELLOW, "%s\n", output_format == FORMAT_ELF ? "ELF" : "Binary");
+    printf("\n");
+}
+
+int main(int argc, char **argv) {
+    const char *DEFAULT_OUTPUT = "a.out";
+    const char *input_file = NULL;
+    const char *output_file = NULL;
+    int verbose = 0;
+    OutputFormat output_format = FORMAT_ELF;
+    int result;
+    
+    /* Initialize color utilities */
+    color_init();
+    
+    /* Initialize syntax module */
+    syntax_init();
+    
+    /* Process command line arguments */
+    result = process_arguments(argc, argv, &input_file, &output_file, &output_format, &verbose);
+    if (result != 0) {
+        /* -1 indicates help/version was shown, exit with success */
+        return result < 0 ? 0 : result;
+    }
+    
+    /* If no output file was specified, use the default */
+    if (!output_file) {
+        output_file = DEFAULT_OUTPUT;
     }
     
     /* Set up the assembler options */
     AssemblerOptions options = {
         .input_filename = input_file,
         .output_filename = output_file,
-        .writer = NULL,
+        .writer = (output_format == FORMAT_ELF) ? write_elf_file : write_binary_file,
         .verbose = verbose
     };
     
-    /* Select the appropriate writer function based on format */
-    switch (output_format) {
-        case FORMAT_ELF:
-            options.writer = write_elf_file;
-            break;
-        case FORMAT_BINARY:
-            options.writer = write_binary_file;
-            break;
-        default:
-            color_error("Internal error - unknown format");
-            return 1;
-    }
-    
     /* Print a welcome banner if verbose */
     if (verbose) {
-        printf("\n");
-        color_printf(COLOR_BOLD COLOR_BRIGHT_BLUE, "JASM Assembler v%s\n", VERSION);
-        color_printf(COLOR_BRIGHT_CYAN, "----------------------------------------\n");
-        color_printf(COLOR_RESET, "Input file:  ");
-        color_printf(COLOR_BRIGHT_WHITE, "%s\n", input_file);
-        color_printf(COLOR_RESET, "Output file: ");
-        color_printf(COLOR_BRIGHT_WHITE, "%s\n", output_file);
-        color_printf(COLOR_RESET, "Format:      ");
-        color_printf(COLOR_BRIGHT_YELLOW, "%s\n", output_format == FORMAT_ELF ? "ELF" : "Binary");
-        printf("\n");
+        print_assembly_info(input_file, output_file, output_format);
     }
     
     /* Assemble the file */
-    int result = assemble(&options);
+    result = assemble(&options);
     
     /* Make ELF files executable */
     if (result == 0 && output_format == FORMAT_ELF) {
