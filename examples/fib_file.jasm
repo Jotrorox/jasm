@@ -6,58 +6,58 @@
 #   sys_exit:  rax=60, rdi=exit status.
 
 # Open the file for writing
-move rax, 2          # sys_open
-move rdi, filename   # filename
-move rsi, 65         # O_WRONLY | O_CREAT
-move rdx, 0644       # File permissions (rw-r--r--)
+mov rax, 2          # sys_open
+mov rdi, filename   # filename
+mov rsi, 65         # O_WRONLY | O_CREAT
+mov rdx, 0644       # File permissions (rw-r--r--)
 call
-move [file_descriptor], rax  # Store the file descriptor
+mov [file_descriptor], rax  # Store the file descriptor
 
 loop:
     # Convert current number to ASCII
-    move rax, [a]
-    move rbx, 48          # ASCII '0' is 48
+    mov rax, [a]
+    mov rbx, 48          # ASCII '0' is 48
     add rax, rbx         # Convert to ASCII digit
-    move [number_buf], rax
+    mov [number_buf], rax
 
     # Write it to the file
-    move rax, 1          # sys_write
-    move rdi, [file_descriptor] # file descriptor (dereferenced)
-    move rsi, number_buf # buffer with number
-    move rdx, 1          # length (1 character)
+    mov rax, 1          # sys_write
+    mov rdi, [file_descriptor] # file descriptor (dereferenced)
+    mov rsi, number_buf # buffer with number
+    mov rdx, 1          # length (1 character)
     call
 
     # Print a space to separate numbers
-    move rax, 1          # sys_write
-    move rdi, [file_descriptor] # file descriptor (dereferenced)
-    move rsi, space      # space character
-    move rdx, 1          # length
+    mov rax, 1          # sys_write
+    mov rdi, [file_descriptor] # file descriptor (dereferenced)
+    mov rsi, space      # space character
+    mov rdx, 1          # length
     call
 
     # Calculate next Fibonacci number
-    move rax, [a]
-    move rbx, [b]
+    mov rax, [a]
+    mov rbx, [b]
     add rax, rbx
-    move [c], rax
-    move rax, [b]
-    move [a], rax
-    move rax, [c]
-    move [b], rax
+    mov [c], rax
+    mov rax, [b]
+    mov [a], rax
+    mov rax, [c]
+    mov [b], rax
 
     # Compare with 10 (loop until we reach 10)
-    move rax, [a]
-    move rbx, 10
-    comp rax, rbx
-    jumplt loop
+    mov rax, [a]
+    mov rbx, 10
+    cmp rax, rbx
+    jmplt loop
 
 # Close the file
-move rax, 3          # sys_close
-move rdi, [file_descriptor] # file descriptor (dereferenced)
+mov rax, 3          # sys_close
+mov rdi, [file_descriptor] # file descriptor (dereferenced)
 call
 
 # Exit program
-move rax, 60      # sys_exit
-move rdi, 0       # status 0
+mov rax, 60      # sys_exit
+mov rdi, 0       # status 0
 call
 
 data a 0          # First Fibonacci number

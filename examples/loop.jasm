@@ -3,53 +3,53 @@
 #   sys_write: rax=1, rdi=stdout, rsi=buffer, rdx=length
 
 # Initialize counter to 1
-move rax, 1
-move [counter], rax
+mov rax, 1
+mov [counter], rax
 
 # Define the loop start label
 loop_start:
     # Print "Count: " prefix
-    move rax, 1          # sys_write
-    move rdi, 1          # stdout
-    move rsi, count_str  # "Count: " string
-    move rdx, 7          # length of "Count: "
+    mov rax, 1          # sys_write
+    mov rdi, 1          # stdout
+    mov rsi, count_str  # "Count: " string
+    mov rdx, 7          # length of "Count: "
     call
 
     # Convert current number to ASCII
-    move rax, [counter]
-    move rbx, 48          # ASCII '0' is 48
+    mov rax, [counter]
+    mov rbx, 48          # ASCII '0' is 48
     add rax, rbx         # Convert to ASCII digit
-    move [number_buf], rax
+    mov [number_buf], rax
 
     # Print the current number
-    move rax, 1          # sys_write
-    move rdi, 1          # stdout
-    move rsi, number_buf # buffer with number
-    move rdx, 1          # length (1 character)
+    mov rax, 1          # sys_write
+    mov rdi, 1          # stdout
+    mov rsi, number_buf # buffer with number
+    mov rdx, 1          # length (1 character)
     call
 
     # Print newline
-    move rax, 1          # sys_write
-    move rdi, 1          # stdout
-    move rsi, newline    # newline character
-    move rdx, 1          # length
+    mov rax, 1          # sys_write
+    mov rdi, 1          # stdout
+    mov rsi, newline    # newline character
+    mov rdx, 1          # length
     call
 
     # Increment counter
-    move rax, [counter]
-    move rbx, 1
+    mov rax, [counter]
+    mov rbx, 1
     add rax, rbx
-    move [counter], rax
+    mov [counter], rax
 
     # Compare counter with 6 (loop until we print 5)
-    move rax, [counter]
-    move rbx, 6
-    comp rax, rbx
-    jumplt loop_start    # If counter < 6, continue loop
+    mov rax, [counter]
+    mov rbx, 6
+    cmp rax, rbx
+    jmplt loop_start    # If counter < 6, continue loop
 
 # Exit program
-move rax, 60      # sys_exit
-move rdi, 0       # status 0
+mov rax, 60      # sys_exit
+mov rdi, 0       # status 0
 call
 
 # Data section

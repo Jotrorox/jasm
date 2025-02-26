@@ -29,13 +29,13 @@ typedef struct {
 } RegisterEntry;
 
 static InstructionEntry instructions[] = {
-    {"move", INSTR_MOVE},
+    {"mov", INSTR_MOVE},
     {"call", INSTR_CALL},
-    {"jump", INSTR_JUMP},
-    {"jumplt", INSTR_JUMPLT},
-    {"jumpgt", INSTR_JUMPGT},
-    {"jumpeq", INSTR_JUMPEQ},
-    {"comp", INSTR_COMP},
+    {"jmp", INSTR_JUMP},
+    {"jmplt", INSTR_JUMPLT},
+    {"jmpgt", INSTR_JUMPGT},
+    {"jmpeq", INSTR_JUMPEQ},
+    {"cmp", INSTR_COMP},
     {"add", INSTR_ADD},
     {NULL, INSTR_UNKNOWN}
 };

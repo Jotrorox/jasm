@@ -8,25 +8,25 @@
 data buffer size 1024
 
 # Read from stdin
-move rax, 0       # sys_read
-move rdi, 0       # stdin file descriptor
-move rsi, buffer  # buffer address
-move rdx, 1024    # buffer size
+mov rax, 0       # sys_read
+mov rdi, 0       # stdin file descriptor
+mov rsi, buffer  # buffer address
+mov rdx, 1024    # buffer size
 call
 
 # Save number of bytes read
-move [bytes_read], rax
+mov [bytes_read], rax
 
 # Write back to stdout
-move rax, 1       # sys_write
-move rdi, 1       # stdout file descriptor
-move rsi, buffer  # buffer address
-move rdx, [bytes_read]  # number of bytes to write
+mov rax, 1       # sys_write
+mov rdi, 1       # stdout file descriptor
+mov rsi, buffer  # buffer address
+mov rdx, [bytes_read]  # number of bytes to write
 call
 
 # Exit
-move rax, 60      # sys_exit
-move rdi, 0       # exit status 0
+mov rax, 60      # sys_exit
+mov rdi, 0       # exit status 0
 call
 
 # Variable to store number of bytes read

@@ -2,7 +2,7 @@
 syntax "JASM" "\.jasm$"
 
 # Keywords
-color brightgreen "^[[:blank:]]*(move|call|jump|jumplt|jumpgt|jumpeq|comp|add|data)\b"
+color brightgreen "^[[:blank:]]*(mov|call|jmp|jmplt|jmpgt|jmpeq|cmp|add|data)\b"
 
 # Register names
 color brightyellow "^[[:blank:]]*(rax|rcx|rdx|rbx|rsi|rdi)\b"

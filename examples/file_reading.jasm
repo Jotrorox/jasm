@@ -8,35 +8,35 @@
 # Open file "file.txt"
 data file_name "data.txt"    # Allocate space for "file.txt" (8 chars + null terminator)
 # (Assume file_name is pre-initialized with "file.txt")
-move rax, 2         # sys_open
-move rdi, file_name # pointer to file name
-move rsi, 0         # flags: read-only (0)
-move rdx, 0         # mode (not used for reading)
+mov rax, 2         # sys_open
+mov rdi, file_name # pointer to file name
+mov rsi, 0         # flags: read-only (0)
+mov rdx, 0         # mode (not used for reading)
 call
 
 # Save file descriptor returned by sys_open
-move [fd], rax
+mov [fd], rax
 
 # Read from file
-move rax, 0         # sys_read
-move rdi, [fd]      # file descriptor from sys_open
-move rsi, buffer    # buffer address
-move rdx, 1024      # maximum number of bytes to read
+mov rax, 0         # sys_read
+mov rdi, [fd]      # file descriptor from sys_open
+mov rsi, buffer    # buffer address
+mov rdx, 1024      # maximum number of bytes to read
 call
 
 # Save number of bytes read
-move [bytes_read], rax
+mov [bytes_read], rax
 
 # Write the file contents to stdout
-move rax, 1         # sys_write
-move rdi, 1         # stdout file descriptor
-move rsi, buffer    # buffer address
-move rdx, [bytes_read]  # number of bytes to write
+mov rax, 1         # sys_write
+mov rdi, 1         # stdout file descriptor
+mov rsi, buffer    # buffer address
+mov rdx, [bytes_read]  # number of bytes to write
 call
 
 # Exit the program
-move rax, 60        # sys_exit
-move rdi, 0         # exit status 0
+mov rax, 60        # sys_exit
+mov rdi, 0         # exit status 0
 call
 
 # Data declarations

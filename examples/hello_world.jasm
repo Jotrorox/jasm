@@ -6,15 +6,15 @@
 # The entry point is at the beginning of the code section.
 
 # sys_write(stdout, msg, 14)
-move rax, 1       # sys_write
-move rdi, 1       # stdout file descriptor
-move rsi, msg     # address of message (resolved via symbol)
-move rdx, 14      # message length (including newline)
+mov rax, 1       # sys_write
+mov rdi, 1       # stdout file descriptor
+mov rsi, msg     # address of message (resolved via symbol)
+mov rdx, 14      # message length (including newline)
 call
 
 # sys_exit(0)
-move rax, 60      # sys_exit
-move rdi, 0       # exit status 0
+mov rax, 60      # sys_exit
+mov rdi, 0       # exit status 0
 call
 
 # Data section: define label 'msg' with the message.
