@@ -2,10 +2,10 @@
     "System Write Call": {
         "prefix": "write",
         "body": [
-            "move rax, 1       # sys_write",
-            "move rdi, 1       # stdout file descriptor",
-            "move rsi, $1      # buffer address",
-            "move rdx, $2      # length",
+            "mov rax, 1       # sys_write",
+            "mov rdi, 1       # stdout file descriptor",
+            "mov rsi, $1      # buffer address",
+            "mov rdx, $2      # length",
             "call"
         ],
         "description": "Write data to stdout using sys_write"
@@ -13,20 +13,20 @@
     "System Read Call": {
         "prefix": "read",
         "body": [
-            "move rax, 0       # sys_read",
-            "move rdi, 0       # stdin file descriptor",
-            "move rsi, $1      # buffer address",
-            "move rdx, $2      # buffer size",
+            "mov rax, 0       # sys_read",
+            "mov rdi, 0       # stdin file descriptor",
+            "mov rsi, $1      # buffer address",
+            "mov rdx, $2      # buffer size",
             "call",
-            "move [$3], rax    # save bytes read"
+            "mov [$3], rax    # save bytes read"
         ],
         "description": "Read data from stdin using sys_read"
     },
     "System Exit Call": {
         "prefix": "exit",
         "body": [
-            "move rax, 60      # sys_exit",
-            "move rdi, $1      # exit status",
+            "mov rax, 60      # sys_exit",
+            "mov rdi, $1      # exit status",
             "call"
         ],
         "description": "Exit program with status code"
@@ -46,10 +46,10 @@
         "body": [
             "$1:",
             "    $2",
-            "    move rax, [$3]    # load counter",
-            "    move rbx, $4      # compare value",
-            "    comp rax, rbx",
-            "    jumplt $1         # loop while less than"
+            "    mov rax, [$3]    # load counter",
+            "    mov rbx, $4      # compare value",
+            "    cmp rax, rbx",
+            "    jmplt $1         # loop while less than"
         ],
         "description": "Create a basic loop structure"
     }

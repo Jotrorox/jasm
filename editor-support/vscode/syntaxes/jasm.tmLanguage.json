@@ -89,6 +89,31 @@
                         "3": { "name": "keyword.other.jasm" },
                         "4": { "name": "string.unquoted.jasm" }
                     }
+                },
+                {
+                    "match": "(data)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s+(int)\\s+([0-9]+)",
+                    "captures": {
+                        "1": { "name": "keyword.control.jasm" },
+                        "2": { "name": "variable.other.jasm" },
+                        "3": { "name": "keyword.other.jasm" },
+                        "4": { "name": "constant.numeric.jasm" }
+                    }
+                },
+                {
+                    "match": "(data)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s+(\".*?\")",
+                    "captures": {
+                        "1": { "name": "keyword.control.jasm" },
+                        "2": { "name": "variable.other.jasm" },
+                        "3": { "name": "string.quoted.double.jasm" }
+                    }
+                },
+                {
+                    "match": "(data)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s+(0[xX][0-9A-Fa-f]+|0[bB][01]+|[0-9]+)",
+                    "captures": {
+                        "1": { "name": "keyword.control.jasm" },
+                        "2": { "name": "variable.other.jasm" },
+                        "3": { "name": "constant.numeric.jasm" }
+                    }
                 }
             ]
         },
