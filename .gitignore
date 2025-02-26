@@ -21,3 +21,6 @@ jasm
 
 # Test files
 output.txt
+
+# Don't ignore the .clang-format file
+!.clang-format
