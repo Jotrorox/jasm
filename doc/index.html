@@ -1,35 +1,597 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JASM Documentation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'code-bg': '#1a1a1a',
+                        'syntax-string': '#98c379',
+                        'syntax-comment': '#5c6370',
+                        'syntax-keyword': '#c678dd',
+                        'primary': '#4F46E5',
+                        'primary-dark': '#4338CA',
+                        'secondary': '#10B981',
+                        'accent': '#F59E0B'
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                        'mono': ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        html {
-            scroll-behavior: smooth;
+        .wave-bottom {
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            overflow: hidden;
+            line-height: 0;
+            transform: rotate(180deg);
         }
-      
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f4f4f4;
-
-            align-items: center;
-            justify-content: center;
-            display: flex;
-            height: 100vh;
-            text-align: center;
-            flex-direction: column;
+        .wave-bottom svg {
+            position: relative;
+            display: block;
+            width: calc(140% + 1.3px);
+            height: 112px;
         }
-
-        h1 {
-            font-size: 3rem;
-            color: #333;
+        .wave-bottom .shape-fill {
+            fill: #F9FAFB;
+        }
+        pre {
+            position: relative;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        .code-header {
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            font-family: 'Inter', sans-serif;
+        }
+        .syntax-highlight .comment { color: #5c6370; font-style: italic; }
+        .syntax-highlight .keyword { color: #c678dd; font-weight: 500; }
+        .syntax-highlight .string { color: #98c379; }
+        .syntax-highlight .register { color: #61afef; font-weight: 500; }
+        .syntax-highlight .number { color: #d19a66; }
+        .syntax-highlight .label { color: #e06c75; }
+        
+        /* Custom scrollbar */
+        pre::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        pre::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+        }
+        pre::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.3);
+            border-radius: 4px;
+        }
+        pre::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.4);
+        }
+        
+        /* Card hover effects */
+        .hover-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .hover-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        /* Button styles */
+        .primary-button {
+            @apply bg-primary text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-dark transition duration-300 shadow-lg hover:shadow-xl;
+        }
+        .secondary-button {
+            @apply border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white/10 transition duration-300;
         }
     </style>
 </head>
-<body>
-    <h1>Under Construction</h1> 
+<body class="bg-gray-50 font-sans">
+    <!-- Navigation -->
+    <nav class="fixed w-full bg-white/95 backdrop-blur-sm shadow-md z-50">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-microchip text-primary text-3xl"></i>
+                    <span class="text-2xl font-bold text-primary">JASM</span>
+                </div>
+                <div class="hidden md:flex space-x-8">
+                    <a href="#getting-started" class="text-gray-700 hover:text-primary transition duration-200 font-medium">Getting Started</a>
+                    <a href="#cli" class="text-gray-700 hover:text-primary transition duration-200 font-medium">CLI</a>
+                    <a href="#examples" class="text-gray-700 hover:text-primary transition duration-200 font-medium">Examples</a>
+                    <a href="#syntax" class="text-gray-700 hover:text-primary transition duration-200 font-medium">Syntax</a>
+                </div>
+                <div>
+                    <a href="https://github.com/jotrorox/jasm" target="_blank" class="text-gray-700 hover:text-primary transition duration-200 flex items-center space-x-2">
+                        <i class="fab fa-github text-2xl"></i>
+                        <span class="hidden sm:inline font-medium">GitHub</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="bg-gradient-to-r from-primary to-primary-dark text-white pt-24 pb-32 relative overflow-hidden">
+        <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMzLjMxIDAgNiAyLjY5IDYgNnMtMi42OSA2LTYgNi02LTIuNjktNi02IDIuNjktNiA2LTZ6IiBzdHJva2U9InJnYmEoMjU1LDI1NSwyNTUsMC4xKSIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9nPjwvc3ZnPg==')] opacity-10"></div>
+        <div class="container mx-auto px-4 sm:px-6 py-12 sm:py-24 text-center relative">
+            <span class="inline-block px-4 py-1 bg-white/10 rounded-full text-sm font-medium mb-8">v0.1 Release</span>
+            <h1 class="text-4xl sm:text-6xl font-bold mb-6 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-100">JASM Assembler</h1>
+            <p class="text-xl sm:text-2xl opacity-90 mb-12 font-medium max-w-2xl mx-auto">A modern, user-friendly x86_64 assembler for Linux</p>
+            <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+                <a href="#getting-started" class="inline-flex items-center justify-center bg-white px-6 sm:px-8 py-3 rounded-lg font-semibold text-primary hover:bg-opacity-90 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 group">
+                    Get Started
+                    <i class="fas fa-arrow-right ml-2 transform group-hover:translate-x-1 transition-transform"></i>
+                </a>
+                <a href="#examples" class="inline-flex items-center justify-center border-2 border-white text-white px-6 sm:px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-primary transition-all duration-300 group">
+                    View Examples
+                    <i class="fas fa-code ml-2 group-hover:scale-110 transition-transform"></i>
+                </a>
+            </div>
+            <div class="mt-16 sm:mt-20 grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-4xl mx-auto text-left">
+                <div class="bg-white/10 rounded-xl p-6 backdrop-blur-sm hover:bg-white/20 transition-all duration-300">
+                    <i class="fas fa-bolt text-2xl mb-4 text-accent"></i>
+                    <h3 class="text-lg font-semibold mb-2">Lightning Fast</h3>
+                    <p class="text-white/80">Optimized assembler with quick compilation times</p>
+                </div>
+                <div class="bg-white/10 rounded-xl p-6 backdrop-blur-sm hover:bg-white/20 transition-all duration-300">
+                    <i class="fas fa-check-circle text-2xl mb-4 text-secondary"></i>
+                    <h3 class="text-lg font-semibold mb-2">Easy to Use</h3>
+                    <p class="text-white/80">Simple syntax and helpful error messages</p>
+                </div>
+                <div class="bg-white/10 rounded-xl p-6 backdrop-blur-sm hover:bg-white/20 transition-all duration-300">
+                    <i class="fas fa-code text-2xl mb-4 text-accent"></i>
+                    <h3 class="text-lg font-semibold mb-2">Modern Features</h3>
+                    <p class="text-white/80">Support for latest x86_64 instructions</p>
+                </div>
+            </div>
+        </div>
+        <div class="wave-bottom">
+            <svg data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
+                <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" class="shape-fill"></path>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-6 py-12">
+        <!-- Getting Started Section -->
+        <section id="getting-started" class="mb-24 scroll-mt-24">
+            <div class="flex items-center mb-8">
+                <div class="bg-primary/10 p-3 rounded-xl mr-4">
+                    <i class="fas fa-rocket text-primary text-2xl"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-gray-900">Getting Started</h2>
+            </div>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-white rounded-xl shadow-lg p-8 hover-card">
+                    <h3 class="text-xl font-semibold mb-6 flex items-center text-gray-900">
+                        <div class="bg-primary/10 p-2 rounded-lg mr-3">
+                            <i class="fas fa-download text-primary"></i>
+                        </div>
+                        Installation
+                    </h3>
+                    <div class="bg-code-bg text-white p-4 rounded-lg">
+                        <div class="code-header flex justify-between items-center text-sm text-gray-400">
+                            <span class="flex items-center">
+                                <i class="fas fa-terminal mr-2"></i>
+                                Terminal
+                            </span>
+                            <button onclick="copyCode('install-code')" class="hover:text-white transition duration-200 flex items-center space-x-1">
+                                <i class="far fa-copy"></i>
+                                <span>Copy</span>
+                            </button>
+                        </div>
+                        <pre id="install-code" class="font-mono text-sm mt-3">
+git clone https://github.com/jotrorox/jasm.git
+cd jasm
+make
+sudo make install</pre>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-8 hover-card">
+                    <h3 class="text-xl font-semibold mb-6 flex items-center text-gray-900">
+                        <div class="bg-primary/10 p-2 rounded-lg mr-3">
+                            <i class="fas fa-play text-primary"></i>
+                        </div>
+                        Quick Start
+                    </h3>
+                    <ol class="list-decimal list-inside space-y-4">
+                        <li class="p-4 bg-gray-50 rounded-lg flex items-start">
+                            <span class="text-primary font-medium mr-3">1.</span>
+                            <div>
+                                <p class="font-medium">Create a new file</p>
+                                <code class="bg-white px-3 py-1 rounded text-sm mt-1 inline-block border border-gray-200">hello.jasm</code>
+                            </div>
+                        </li>
+                        <li class="p-4 bg-gray-50 rounded-lg flex items-start">
+                            <span class="text-primary font-medium mr-3">2.</span>
+                            <div>
+                                <p class="font-medium">Write your assembly code</p>
+                                <p class="text-gray-600 text-sm mt-1">Follow the syntax guide below</p>
+                            </div>
+                        </li>
+                        <li class="p-4 bg-gray-50 rounded-lg flex items-start">
+                            <span class="text-primary font-medium mr-3">3.</span>
+                            <div>
+                                <p class="font-medium">Compile your code</p>
+                                <code class="bg-white px-3 py-1 rounded text-sm mt-1 inline-block border border-gray-200">jasm hello.jasm</code>
+                            </div>
+                        </li>
+                        <li class="p-4 bg-gray-50 rounded-lg flex items-start">
+                            <span class="text-primary font-medium mr-3">4.</span>
+                            <div>
+                                <p class="font-medium">Run the executable</p>
+                                <code class="bg-white px-3 py-1 rounded text-sm mt-1 inline-block border border-gray-200">./a.out</code>
+                            </div>
+                        </li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
+        <!-- CLI Section -->
+        <section id="cli" class="mb-24 scroll-mt-24">
+            <div class="flex items-center mb-8">
+                <div class="bg-primary/10 p-3 rounded-xl mr-4">
+                    <i class="fas fa-terminal text-primary text-2xl"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-gray-900">Command Line Interface</h2>
+            </div>
+            <div class="bg-white rounded-xl shadow-lg p-8 hover-card">
+                <div class="bg-code-bg text-white p-6 rounded-lg mb-8">
+                    <div class="code-header flex justify-between items-center text-sm text-gray-400 mb-4">
+                        <span class="flex items-center">
+                            <i class="fas fa-code mr-2"></i>
+                            Usage
+                        </span>
+                        <button onclick="copyCode('cli-usage')" class="hover:text-white transition duration-200 flex items-center space-x-1">
+                            <i class="far fa-copy"></i>
+                            <span>Copy</span>
+                        </button>
+                    </div>
+                    <pre id="cli-usage" class="font-mono text-sm syntax-highlight">
+jasm [options] &lt;input.jasm&gt; [output]
+
+Options:
+  -h, --help            Display help message
+  -v, --verbose         Enable verbose output
+  -V, --version         Display version information
+  -f, --format <format> Specify output format (elf, bin)</pre>
+                </div>
+                
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div>
+                        <h4 class="text-xl font-semibold mb-6 flex items-center text-gray-900">
+                            <div class="bg-primary/10 p-2 rounded-lg mr-3">
+                                <i class="fas fa-code text-primary"></i>
+                            </div>
+                            Example Usage
+                        </h4>
+                        <div class="space-y-4">
+                            <div class="bg-gray-50 p-6 rounded-lg border border-gray-100">
+                                <p class="font-semibold text-gray-900 mb-3">Basic Compilation</p>
+                                <code class="block text-sm bg-white p-3 rounded border border-gray-200">jasm program.jasm</code>
+                                <p class="text-sm text-gray-600 mt-3">Creates an ELF executable named a.out</p>
+                            </div>
+                            <div class="bg-gray-50 p-6 rounded-lg border border-gray-100">
+                                <p class="font-semibold text-gray-900 mb-3">Binary Output</p>
+                                <code class="block text-sm bg-white p-3 rounded border border-gray-200">jasm -f bin program.jasm prog.bin</code>
+                                <p class="text-sm text-gray-600 mt-3">Creates a raw binary file</p>
+                            </div>
+                            <div class="bg-gray-50 p-6 rounded-lg border border-gray-100">
+                                <p class="font-semibold text-gray-900 mb-3">Verbose Mode</p>
+                                <code class="block text-sm bg-white p-3 rounded border border-gray-200">jasm -v program.jasm prog</code>
+                                <p class="text-sm text-gray-600 mt-3">Shows detailed assembly information</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-xl font-semibold mb-6 flex items-center text-gray-900">
+                            <div class="bg-primary/10 p-2 rounded-lg mr-3">
+                                <i class="fas fa-file-export text-primary"></i>
+                            </div>
+                            Output Formats
+                        </h4>
+                        <div class="space-y-4">
+                            <div class="bg-gray-50 p-6 rounded-lg border border-gray-100">
+                                <h5 class="font-semibold text-gray-900 mb-3">ELF (default)</h5>
+                                <p class="text-gray-600 mb-3">Creates a Linux executable file with:</p>
+                                <ul class="list-disc list-inside text-sm text-gray-600 space-y-2">
+                                    <li class="flex items-center">
+                                        <i class="fas fa-check text-secondary mr-2"></i>
+                                        Proper ELF headers
+                                    </li>
+                                    <li class="flex items-center">
+                                        <i class="fas fa-check text-secondary mr-2"></i>
+                                        Executable permissions
+                                    </li>
+                                    <li class="flex items-center">
+                                        <i class="fas fa-check text-secondary mr-2"></i>
+                                        Symbol information
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="bg-gray-50 p-6 rounded-lg border border-gray-100">
+                                <h5 class="font-semibold text-gray-900 mb-3">Binary</h5>
+                                <p class="text-gray-600 mb-3">Creates a raw binary file containing:</p>
+                                <ul class="list-disc list-inside text-sm text-gray-600 space-y-2">
+                                    <li class="flex items-center">
+                                        <i class="fas fa-check text-secondary mr-2"></i>
+                                        Pure machine code
+                                    </li>
+                                    <li class="flex items-center">
+                                        <i class="fas fa-check text-secondary mr-2"></i>
+                                        No headers or metadata
+                                    </li>
+                                    <li class="flex items-center">
+                                        <i class="fas fa-check text-secondary mr-2"></i>
+                                        Suitable for embedded use
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Examples Section -->
+        <section id="examples" class="mb-16 scroll-mt-24">
+            <div class="flex items-center mb-6">
+                <i class="fas fa-code text-primary text-2xl mr-4"></i>
+                <h2 class="text-3xl font-bold">Examples</h2>
+            </div>
+            
+            <!-- Hello World Example -->
+            <div class="mb-8">
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                    <div class="border-b border-gray-200 p-4 flex justify-between items-center">
+                        <h3 class="text-xl font-semibold flex items-center">
+                            <i class="fas fa-hand-wave text-primary mr-2"></i>
+                            Hello World
+                        </h3>
+                        <button class="text-primary hover:text-primary-dark transition duration-200" onclick="copyCode('hello-world')">
+                            <i class="far fa-copy"></i> Copy
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        <pre id="hello-world" class="bg-code-bg text-white p-4 rounded-lg overflow-x-auto syntax-highlight">
+<span class="comment"># Example: Print "Hello, world!" to stdout</span>
+<span class="comment"># Syscall details:</span>
+<span class="comment">#   sys_write: rax=1, rdi=stdout, rsi=buffer, rdx=length</span>
+
+<span class="keyword">data</span> <span class="label">msg</span> <span class="string">"Hello, World!\n"</span>
+
+<span class="comment"># sys_write(stdout, msg, 14)</span>
+<span class="keyword">mov</span> <span class="register">rax</span>, <span class="number">1</span>       <span class="comment"># sys_write</span>
+<span class="keyword">mov</span> <span class="register">rdi</span>, <span class="number">1</span>       <span class="comment"># stdout</span>
+<span class="keyword">mov</span> <span class="register">rsi</span>, msg     <span class="comment"># message</span>
+<span class="keyword">mov</span> <span class="register">rdx</span>, <span class="number">14</span>      <span class="comment"># length</span>
+<span class="keyword">call</span>
+
+<span class="comment"># sys_exit(0)</span>
+<span class="keyword">mov</span> <span class="register">rax</span>, <span class="number">60</span>      <span class="comment"># sys_exit</span>
+<span class="keyword">mov</span> <span class="register">rdi</span>, <span class="number">0</span>       <span class="comment"># status</span>
+<span class="keyword">call</span></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Reading Example -->
+            <div class="mb-8">
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                    <div class="border-b border-gray-200 p-4 flex justify-between items-center">
+                        <h3 class="text-xl font-semibold flex items-center">
+                            <i class="fas fa-file-alt text-primary mr-2"></i>
+                            File Reading
+                        </h3>
+                        <button class="text-primary hover:text-primary-dark transition duration-200" onclick="copyCode('file-read')">
+                            <i class="far fa-copy"></i> Copy
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        <pre id="file-read" class="bg-code-bg text-white p-4 rounded-lg overflow-x-auto syntax-highlight">
+<span class="comment"># Example: Read from a file and display contents</span>
+<span class="comment"># Syscall details:</span>
+<span class="comment">#   sys_open:  rax=2, rdi=filename, rsi=flags</span>
+<span class="comment">#   sys_read:  rax=0, rdi=fd, rsi=buffer, rdx=length</span>
+
+<span class="keyword">data</span> <span class="label">filename</span> <span class="string">"input.txt"</span>
+<span class="keyword">data</span> <span class="label">buffer</span> size <span class="number">1024</span>
+<span class="keyword">data</span> <span class="label">fd</span> size <span class="number">8</span>
+
+<span class="comment"># Open file</span>
+<span class="keyword">mov</span> <span class="register">rax</span>, <span class="number">2</span>          <span class="comment"># sys_open</span>
+<span class="keyword">mov</span> <span class="register">rdi</span>, filename
+<span class="keyword">mov</span> <span class="register">rsi</span>, <span class="number">0</span>          <span class="comment"># O_RDONLY</span>
+<span class="keyword">call</span>
+
+<span class="comment"># Read file</span>
+<span class="keyword">mov</span> <span class="register">rax</span>, <span class="number">0</span>          <span class="comment"># sys_read</span>
+<span class="keyword">mov</span> <span class="register">rdi</span>, [fd]
+<span class="keyword">mov</span> <span class="register">rsi</span>, buffer
+<span class="keyword">mov</span> <span class="register">rdx</span>, <span class="number">1024</span>
+<span class="keyword">call</span></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Syntax Reference -->
+        <section id="syntax" class="mb-16 scroll-mt-24">
+            <div class="flex items-center mb-6">
+                <i class="fas fa-book text-primary text-2xl mr-4"></i>
+                <h2 class="text-3xl font-bold">Syntax Reference</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Program Sections -->
+                <div class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition duration-300">
+                    <h3 class="text-xl font-semibold mb-4 flex items-center">
+                        <i class="fas fa-layer-group text-primary mr-2"></i>
+                        Program Sections
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <code class="block font-semibold mb-2 text-primary">data <label> <value></code>
+                            <p>Define data with a label and value</p>
+                            <code class="block text-sm bg-white p-2 rounded mt-2">data msg "Hello"</code>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <code class="block font-semibold mb-2 text-primary">data <label> size <bytes></code>
+                            <p>Allocate buffer with specified size</p>
+                            <code class="block text-sm bg-white p-2 rounded mt-2">data buffer size 1024</code>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <code class="block font-semibold mb-2 text-primary">data <label> file <path></code>
+                            <p>Load data from a file</p>
+                            <code class="block text-sm bg-white p-2 rounded mt-2">data content file "data.txt"</code>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Instructions -->
+                <div class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition duration-300">
+                    <h3 class="text-xl font-semibold mb-4 flex items-center">
+                        <i class="fas fa-microchip text-primary mr-2"></i>
+                        Instructions
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <code class="block font-semibold mb-2 text-primary">mov destination, source</code>
+                            <p>Move data between registers or memory</p>
+                            <code class="block text-sm bg-white p-2 rounded mt-2">mov rax, 42
+mov rax, [msg]</code>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <code class="block font-semibold mb-2 text-primary">call</code>
+                            <p>System call (based on rax value)</p>
+                            <code class="block text-sm bg-white p-2 rounded mt-2">mov rax, 1  # sys_write
+call</code>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <code class="block font-semibold mb-2 text-primary">jmp/jmplt/jmpgt/jmpeq label</code>
+                            <p>Jump instructions</p>
+                            <code class="block text-sm bg-white p-2 rounded mt-2">jmplt loop_start</code>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Registers -->
+                <div class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition duration-300">
+                    <h3 class="text-xl font-semibold mb-4 flex items-center">
+                        <i class="fas fa-database text-primary mr-2"></i>
+                        Registers
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <h4 class="font-semibold mb-2">General Purpose</h4>
+                            <div class="grid grid-cols-2 gap-2">
+                                <code class="block text-sm bg-white p-2 rounded">rax - Accumulator</code>
+                                <code class="block text-sm bg-white p-2 rounded">rbx - Base</code>
+                                <code class="block text-sm bg-white p-2 rounded">rcx - Counter</code>
+                                <code class="block text-sm bg-white p-2 rounded">rdx - Data</code>
+                                <code class="block text-sm bg-white p-2 rounded">rsi - Source</code>
+                                <code class="block text-sm bg-white p-2 rounded">rdi - Destination</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Calls -->
+                <div class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition duration-300">
+                    <h3 class="text-xl font-semibold mb-4 flex items-center">
+                        <i class="fas fa-cogs text-primary mr-2"></i>
+                        System Calls
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <code class="block font-semibold mb-2 text-primary">sys_write (rax = 1)</code>
+                            <p>Write to file descriptor</p>
+                            <code class="block text-sm bg-white p-2 rounded mt-2">rdi: fd, rsi: buffer, rdx: count</code>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <code class="block font-semibold mb-2 text-primary">sys_read (rax = 0)</code>
+                            <p>Read from file descriptor</p>
+                            <code class="block text-sm bg-white p-2 rounded mt-2">rdi: fd, rsi: buffer, rdx: count</code>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <code class="block font-semibold mb-2 text-primary">sys_open (rax = 2)</code>
+                            <p>Open a file</p>
+                            <code class="block text-sm bg-white p-2 rounded mt-2">rdi: filename, rsi: flags</code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-12">
+        <div class="container mx-auto px-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                    <h3 class="text-xl font-bold mb-4">JASM Assembler</h3>
+                    <p class="text-gray-400">A modern x86_64 assembler designed for simplicity and ease of use.</p>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold mb-4">Quick Links</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#getting-started" class="text-gray-400 hover:text-white transition duration-200">Getting Started</a></li>
+                        <li><a href="#examples" class="text-gray-400 hover:text-white transition duration-200">Examples</a></li>
+                        <li><a href="#syntax" class="text-gray-400 hover:text-white transition duration-200">Syntax Reference</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold mb-4">Connect</h3>
+                    <ul class="space-y-2">
+                        <li><a href="https://github.com/jotrorox/jasm" class="text-gray-400 hover:text-white transition duration-200">
+                            <i class="fab fa-github mr-2"></i>GitHub
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 mt-8 pt-8 text-center">
+                <p>JASM Assembler v0.1</p>
+                <p class="mt-2 text-gray-400">Copyright © 2025 Johannes (Jotrorox) Müller</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Copy to Clipboard Script -->
+    <script>
+        function copyCode(elementId) {
+            const el = document.getElementById(elementId);
+            const text = el.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const button = el.parentElement.parentElement.querySelector('button');
+                const icon = button.querySelector('i');
+                icon.classList.remove('far', 'fa-copy');
+                icon.classList.add('fas', 'fa-check');
+                setTimeout(() => {
+                    icon.classList.remove('fas', 'fa-check');
+                    icon.classList.add('far', 'fa-copy');
+                }, 2000);
+            });
+        }
+    </script>
 </body>
 </html>
