@@ -32,11 +32,29 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
+        /* Animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        @keyframes wave {
+            0% { transform: translateX(0); }
+            50% { transform: translateX(-25px); }
+            100% { transform: translateX(0); }
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
         .wave-bottom {
             position: absolute;
-            bottom: -1px;
-            left: 0;
-            width: 100%;
+            bottom: -2px;
+            left: -2px;
+            width: calc(100% + 4px);
             overflow: hidden;
             line-height: 0;
             transform: rotate(180deg);
@@ -44,11 +62,23 @@
         .wave-bottom svg {
             position: relative;
             display: block;
-            width: calc(140% + 1.3px);
+            width: calc(150% + 1.3px);
             height: 112px;
+            transform: translateX(-10%);
         }
         .wave-bottom .shape-fill {
             fill: #F9FAFB;
+        }
+        .floating-icon {
+            animation: float 3s ease-in-out infinite;
+        }
+        .shimmer-bg {
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 100%);
+            background-size: 1000px 100%;
+            animation: shimmer 8s linear infinite;
+        }
+        .pulse-bg {
+            animation: pulse 2s ease-in-out infinite;
         }
         pre {
             position: relative;
@@ -102,6 +132,9 @@
         .secondary-button {
             @apply border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white/10 transition duration-300;
         }
+        body {
+            overflow-x: hidden;
+        }
     </style>
 </head>
 <body class="bg-gray-50 font-sans">
@@ -130,37 +163,39 @@
     </nav>
 
     <!-- Hero Section -->
-    <div class="bg-gradient-to-r from-primary to-primary-dark text-white pt-24 pb-32 relative overflow-hidden">
-        <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMzLjMxIDAgNiAyLjY5IDYgNnMtMi42OSA2LTYgNi02LTIuNjktNi02IDIuNjktNiA2LTZ6IiBzdHJva2U9InJnYmEoMjU1LDI1NSwyNTUsMC4xKSIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9nPjwvc3ZnPg==')] opacity-10"></div>
+    <div class="bg-gradient-to-r from-primary to-primary-dark text-white pt-20 sm:pt-24 pb-32 relative overflow-hidden">
+        <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMzLjMxIDAgNiAyLjY5IDYgNnMtMi42OSA2LTYgNi02LTIuNjktNi02IDIuNjktNiA2LTZ6IiBzdHJva2U9InJnYmEoMjU1LDI1NSwyNTUsMC4xKSIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9nPjwvc3ZnPg==')] opacity-10 shimmer-bg"></div>
         <div class="container mx-auto px-4 sm:px-6 py-12 sm:py-24 text-center relative">
-            <span class="inline-block px-4 py-1 bg-white/10 rounded-full text-sm font-medium mb-8">v0.1 Release</span>
-            <h1 class="text-4xl sm:text-6xl font-bold mb-6 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-100">JASM Assembler</h1>
-            <p class="text-xl sm:text-2xl opacity-90 mb-12 font-medium max-w-2xl mx-auto">A modern, user-friendly x86_64 assembler for Linux</p>
+            <span class="inline-block px-4 py-1 bg-white/10 rounded-full text-sm font-medium mb-8 hover:bg-white/20 transition-all duration-300">v0.1 Release</span>
+            <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-100 pulse-bg">JASM Assembler</h1>
+            <p class="text-lg sm:text-xl md:text-2xl opacity-90 mb-12 font-medium max-w-2xl mx-auto">A modern, user-friendly x86_64 assembler for Linux</p>
             <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
-                <a href="#getting-started" class="inline-flex items-center justify-center bg-white px-6 sm:px-8 py-3 rounded-lg font-semibold text-primary hover:bg-opacity-90 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 group">
-                    Get Started
-                    <i class="fas fa-arrow-right ml-2 transform group-hover:translate-x-1 transition-transform"></i>
+                <a href="#getting-started" class="inline-flex items-center justify-center bg-white px-6 sm:px-8 py-3 rounded-lg font-semibold text-primary hover:bg-opacity-90 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 group relative overflow-hidden">
+                    <span class="relative z-10">Get Started</span>
+                    <i class="fas fa-arrow-right ml-2 transform group-hover:translate-x-1 transition-transform relative z-10"></i>
+                    <div class="absolute inset-0 bg-gradient-to-r from-white to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </a>
-                <a href="#examples" class="inline-flex items-center justify-center border-2 border-white text-white px-6 sm:px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-primary transition-all duration-300 group">
-                    View Examples
-                    <i class="fas fa-code ml-2 group-hover:scale-110 transition-transform"></i>
+                <a href="#examples" class="inline-flex items-center justify-center border-2 border-white text-white px-6 sm:px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-primary transition-all duration-300 group relative overflow-hidden">
+                    <span class="relative z-10">View Examples</span>
+                    <i class="fas fa-code ml-2 group-hover:scale-110 transition-transform relative z-10"></i>
+                    <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </a>
             </div>
-            <div class="mt-16 sm:mt-20 grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-4xl mx-auto text-left">
-                <div class="bg-white/10 rounded-xl p-6 backdrop-blur-sm hover:bg-white/20 transition-all duration-300">
-                    <i class="fas fa-bolt text-2xl mb-4 text-accent"></i>
-                    <h3 class="text-lg font-semibold mb-2">Lightning Fast</h3>
-                    <p class="text-white/80">Optimized assembler with quick compilation times</p>
+            <div class="mt-16 sm:mt-20 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8 max-w-4xl mx-auto text-left px-2 sm:px-0">
+                <div class="bg-white/10 rounded-xl p-6 backdrop-blur-sm hover:bg-white/20 transition-all duration-300 group">
+                    <i class="fas fa-bolt text-2xl mb-4 text-accent floating-icon inline-block"></i>
+                    <h3 class="text-lg font-semibold mb-2 group-hover:translate-x-1 transition-transform">Lightning Fast</h3>
+                    <p class="text-white/80 text-sm sm:text-base">Optimized assembler with quick compilation times</p>
                 </div>
-                <div class="bg-white/10 rounded-xl p-6 backdrop-blur-sm hover:bg-white/20 transition-all duration-300">
-                    <i class="fas fa-check-circle text-2xl mb-4 text-secondary"></i>
-                    <h3 class="text-lg font-semibold mb-2">Easy to Use</h3>
-                    <p class="text-white/80">Simple syntax and helpful error messages</p>
+                <div class="bg-white/10 rounded-xl p-6 backdrop-blur-sm hover:bg-white/20 transition-all duration-300 group">
+                    <i class="fas fa-check-circle text-2xl mb-4 text-secondary floating-icon inline-block"></i>
+                    <h3 class="text-lg font-semibold mb-2 group-hover:translate-x-1 transition-transform">Easy to Use</h3>
+                    <p class="text-white/80 text-sm sm:text-base">Simple syntax and helpful error messages</p>
                 </div>
-                <div class="bg-white/10 rounded-xl p-6 backdrop-blur-sm hover:bg-white/20 transition-all duration-300">
-                    <i class="fas fa-code text-2xl mb-4 text-accent"></i>
-                    <h3 class="text-lg font-semibold mb-2">Modern Features</h3>
-                    <p class="text-white/80">Support for latest x86_64 instructions</p>
+                <div class="bg-white/10 rounded-xl p-6 backdrop-blur-sm hover:bg-white/20 transition-all duration-300 group">
+                    <i class="fas fa-code text-2xl mb-4 text-accent floating-icon inline-block"></i>
+                    <h3 class="text-lg font-semibold mb-2 group-hover:translate-x-1 transition-transform">Modern Features</h3>
+                    <p class="text-white/80 text-sm sm:text-base">Support for latest x86_64 instructions</p>
                 </div>
             </div>
         </div>
