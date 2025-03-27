@@ -336,7 +336,37 @@
                         <pre id="install-code" class="font-mono text-sm mt-3">
 git clone https://github.com/jotrorox/jasm.git
 cd jasm
-make</pre>
+cc -o nob nob.c
+./nob --type Release</pre>
+                    </div>
+                    <div class="mt-4 space-y-2">
+                        <h4 class="font-semibold text-gray-900">Build Types</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                <h5 class="font-medium text-primary">Debug</h5>
+                                <p class="text-sm text-gray-600">Includes debugging symbols and ASAN</p>
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                <h5 class="font-medium text-primary">Release</h5>
+                                <p class="text-sm text-gray-600">Optimized for maximum performance</p>
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                <h5 class="font-medium text-primary">Verbose</h5>
+                                <p class="text-sm text-gray-600">Additional warnings and debug info</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <h4 class="font-semibold text-gray-900">Additional Options</h4>
+                        <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 mt-2">
+                            <pre class="text-sm font-mono text-gray-700">
+--verbose     Show detailed build information
+--output      Specify output directory (default: build)
+--clean       Clean the build directory
+--install     Install the executable
+--uninstall   Uninstall the executable
+--prefix      Specify installation prefix</pre>
+                        </div>
                     </div>
                 </div>
                 <div class="bg-white rounded-xl shadow-lg p-8 hover-card">
