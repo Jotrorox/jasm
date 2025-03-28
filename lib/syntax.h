@@ -37,6 +37,18 @@ typedef enum {
     INSTR_JUMPEQ,
     INSTR_COMP,
     INSTR_ADD,
+    /* New arithmetic instructions */
+    INSTR_SUB,
+    INSTR_MUL,
+    INSTR_DIV,
+    INSTR_MOD,
+    /* New bitwise instructions */
+    INSTR_AND,
+    INSTR_OR,
+    INSTR_XOR,
+    INSTR_NOT,
+    INSTR_SHL,
+    INSTR_SHR,
     INSTR_UNKNOWN
 } InstructionType;
 

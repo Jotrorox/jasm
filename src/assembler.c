@@ -206,9 +206,15 @@ static size_t read_all_lines(const char *filename)
 
 /* Simulate instruction emission size.
    Supported:
-     move <reg>, <immediate> -> 5 bytes if immediate fits in 32 bits, else 10
-   bytes. call -> 2 bytes. jump -> 5 bytes jumplt/jumpgt/jumpeq -> 6 bytes comp
-   <reg>, <reg/immediate> -> 3-7 bytes add <reg>, <reg/immediate> -> 3-7 bytes
+     move <reg>, <immediate> -> 5 bytes if immediate fits in 32 bits, else 10 bytes
+     call -> 2 bytes
+     jump -> 5 bytes
+     jmplt/jumpgt/jumpeq -> 6 bytes
+     comp <reg>, <reg/immediate> -> 3-7 bytes
+     add/sub/mul/div/mod <reg>, <reg/immediate> -> 3-7 bytes
+     and/or/xor <reg>, <reg/immediate> -> 3-7 bytes
+     not <reg> -> 3 bytes
+     shl/shr <reg>, <reg/immediate> -> 3-7 bytes
 */
 static size_t simulate_instruction(const char *line)
 {
@@ -246,7 +252,8 @@ static size_t simulate_instruction(const char *line)
                    - 32-bit displacement (4 bytes)
                 */
                 return 7;
-            } else if (syntax_is_numeric(token)) {
+            }
+            if (syntax_is_numeric(token)) {
                 uint64_t val = strtoull(token, NULL, 0);
                 if (val <= 0xffffffffULL) {
                     /* 32-bit immediate:
@@ -296,17 +303,31 @@ static size_t simulate_instruction(const char *line)
             return 5;
 
         case INSTR_COMP:
-        case INSTR_ADD: {
-            /* Format: comp/add <reg>, <reg/immediate> */
-            char *token = strtok(trimmed, " ,\t"); /* "comp" or "add" */
+        case INSTR_ADD:
+        case INSTR_SUB:
+        case INSTR_MUL:
+        case INSTR_DIV:
+        case INSTR_MOD:
+        case INSTR_AND:
+        case INSTR_OR:
+        case INSTR_XOR:
+        case INSTR_SHL:
+        case INSTR_SHR: {
+            /* Format: <instr> <reg>, <reg/immediate> */
+            char *token = strtok(trimmed, " ,\t");
             if (!token)
                 return 0;
+
             char *first = strtok(NULL, " ,\t"); /* first operand */
             if (!first)
                 return 0;
 
             char *second = strtok(NULL, " ,\t"); /* second operand */
             if (!second)
+                return 0;
+
+            uint8_t reg = syntax_get_register_code(first);
+            if (reg == 0xFF)
                 return 0;
 
             if (syntax_is_numeric(second)) {
@@ -325,6 +346,28 @@ static size_t simulate_instruction(const char *line)
                 */
                 return 3;
             }
+            break;
+        }
+
+        case INSTR_NOT: {
+            /* Format: not <reg> */
+            char *token = strtok(trimmed, " ,\t"); /* "not" */
+            if (!token)
+                return 0;
+            char *reg = strtok(NULL, " ,\t"); /* register */
+            if (!reg)
+                return 0;
+
+            uint8_t reg_code = syntax_get_register_code(reg);
+            if (reg_code == 0xFF)
+                return 0;
+
+            /* Register operation:
+               - REX.W (1 byte)
+               - Opcode (1 byte)
+               - ModR/M (1 byte)
+            */
+            return 3;
             break;
         }
 
@@ -618,8 +661,17 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
         }
 
         case INSTR_COMP:
-        case INSTR_ADD: {
-            /* Format: comp/add <reg>, <reg/immediate> */
+        case INSTR_ADD:
+        case INSTR_SUB:
+        case INSTR_MUL:
+        case INSTR_DIV:
+        case INSTR_MOD:
+        case INSTR_AND:
+        case INSTR_OR:
+        case INSTR_XOR:
+        case INSTR_SHL:
+        case INSTR_SHR: {
+            /* Format: <instr> <reg>, <reg/immediate> */
             char *token = strtok(trimmed, " ,\t");
             if (!token) {
                 color_error("expected instruction");
@@ -649,24 +701,52 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
 
                 uint64_t val = strtoull(second, NULL, 0);
 
-                if (instrType == INSTR_COMP) {
-                    /* Compare with immediate */
-                    codeBuf->bytes[codeBuf->size++] = 0x48;       /* REX.W */
-                    codeBuf->bytes[codeBuf->size++] = 0x81;       /* cmp r/m64, imm32 */
-                    codeBuf->bytes[codeBuf->size++] = 0xF8 | reg; /* ModR/M: register direct */
-                    /* 32-bit immediate */
-                    for (int i = 0; i < 4; i++)
-                        codeBuf->bytes[codeBuf->size++] = (uint8_t)((val >> (8 * i)) & 0xff);
-                } else /* add */
-                {
-                    /* Add immediate */
-                    codeBuf->bytes[codeBuf->size++] = 0x48;       /* REX.W */
-                    codeBuf->bytes[codeBuf->size++] = 0x81;       /* add r/m64, imm32 */
-                    codeBuf->bytes[codeBuf->size++] = 0xC0 | reg; /* ModR/M: register direct */
-                    /* 32-bit immediate */
-                    for (int i = 0; i < 4; i++)
-                        codeBuf->bytes[codeBuf->size++] = (uint8_t)((val >> (8 * i)) & 0xff);
+                codeBuf->bytes[codeBuf->size++] = 0x48;       /* REX.W */
+                codeBuf->bytes[codeBuf->size++] = 0x81;       /* op r/m64, imm32 */
+
+                /* Set the appropriate opcode based on instruction type */
+                switch (instrType) {
+                    case INSTR_COMP:
+                        codeBuf->bytes[codeBuf->size++] = 0xF8 | reg; /* cmp */
+                        break;
+                    case INSTR_ADD:
+                        codeBuf->bytes[codeBuf->size++] = 0xC0 | reg; /* add */
+                        break;
+                    case INSTR_SUB:
+                        codeBuf->bytes[codeBuf->size++] = 0xE8 | reg; /* sub */
+                        break;
+                    case INSTR_MUL:
+                        codeBuf->bytes[codeBuf->size++] = 0xE8 | reg; /* imul */
+                        break;
+                    case INSTR_DIV:
+                        codeBuf->bytes[codeBuf->size++] = 0xF8 | reg; /* idiv */
+                        break;
+                    case INSTR_MOD:
+                        codeBuf->bytes[codeBuf->size++] = 0xF8 | reg; /* idiv */
+                        break;
+                    case INSTR_AND:
+                        codeBuf->bytes[codeBuf->size++] = 0xE0 | reg; /* and */
+                        break;
+                    case INSTR_OR:
+                        codeBuf->bytes[codeBuf->size++] = 0xC8 | reg; /* or */
+                        break;
+                    case INSTR_XOR:
+                        codeBuf->bytes[codeBuf->size++] = 0xF0 | reg; /* xor */
+                        break;
+                    case INSTR_SHL:
+                        codeBuf->bytes[codeBuf->size++] = 0xE0 | reg; /* shl */
+                        break;
+                    case INSTR_SHR:
+                        codeBuf->bytes[codeBuf->size++] = 0xE8 | reg; /* shr */
+                        break;
+                    default:
+                        color_error("internal error: unknown instruction type");
+                        exit(1);
                 }
+
+                /* 32-bit immediate */
+                for (int i = 0; i < 4; i++)
+                    codeBuf->bytes[codeBuf->size++] = (uint8_t)((val >> (8 * i)) & 0xff);
             } else {
                 ensure_code_buffer_capacity(codeBuf, 3);  // Need 3 bytes
 
@@ -679,15 +759,88 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
 
                 codeBuf->bytes[codeBuf->size++] = 0x48; /* REX.W */
 
-                if (instrType == INSTR_COMP) {
-                    codeBuf->bytes[codeBuf->size++] = 0x39;                     /* cmp r/m64, r64 */
-                    codeBuf->bytes[codeBuf->size++] = 0xC0 | (reg2 << 3) | reg; /* ModR/M */
-                } else                                                          /* add */
-                {
-                    codeBuf->bytes[codeBuf->size++] = 0x01;                     /* add r/m64, r64 */
-                    codeBuf->bytes[codeBuf->size++] = 0xC0 | (reg2 << 3) | reg; /* ModR/M */
+                /* Set the appropriate opcode based on instruction type */
+                switch (instrType) {
+                    case INSTR_COMP:
+                        codeBuf->bytes[codeBuf->size++] = 0x39;                     /* cmp r/m64, r64 */
+                        codeBuf->bytes[codeBuf->size++] = 0xC0 | (reg2 << 3) | reg; /* ModR/M */
+                        break;
+                    case INSTR_ADD:
+                        codeBuf->bytes[codeBuf->size++] = 0x01;                     /* add r/m64, r64 */
+                        codeBuf->bytes[codeBuf->size++] = 0xC0 | (reg2 << 3) | reg; /* ModR/M */
+                        break;
+                    case INSTR_SUB:
+                        codeBuf->bytes[codeBuf->size++] = 0x29;                     /* sub r/m64, r64 */
+                        codeBuf->bytes[codeBuf->size++] = 0xC0 | (reg2 << 3) | reg; /* ModR/M */
+                        break;
+                    case INSTR_MUL:
+                        codeBuf->bytes[codeBuf->size++] = 0x0F;                     /* imul r64, r/m64 */
+                        codeBuf->bytes[codeBuf->size++] = 0xAF;                     /* imul */
+                        codeBuf->bytes[codeBuf->size++] = 0xC0 | (reg << 3) | reg2; /* ModR/M */
+                        break;
+                    case INSTR_DIV:
+                        codeBuf->bytes[codeBuf->size++] = 0x48;                     /* REX.W */
+                        codeBuf->bytes[codeBuf->size++] = 0xF7;                     /* idiv r/m64 */
+                        codeBuf->bytes[codeBuf->size++] = 0xF8 | reg2;              /* ModR/M */
+                        break;
+                    case INSTR_MOD:
+                        codeBuf->bytes[codeBuf->size++] = 0x48;                     /* REX.W */
+                        codeBuf->bytes[codeBuf->size++] = 0xF7;                     /* idiv r/m64 */
+                        codeBuf->bytes[codeBuf->size++] = 0xF8 | reg2;              /* ModR/M */
+                        break;
+                    case INSTR_AND:
+                        codeBuf->bytes[codeBuf->size++] = 0x21;                     /* and r/m64, r64 */
+                        codeBuf->bytes[codeBuf->size++] = 0xC0 | (reg2 << 3) | reg; /* ModR/M */
+                        break;
+                    case INSTR_OR:
+                        codeBuf->bytes[codeBuf->size++] = 0x09;                     /* or r/m64, r64 */
+                        codeBuf->bytes[codeBuf->size++] = 0xC0 | (reg2 << 3) | reg; /* ModR/M */
+                        break;
+                    case INSTR_XOR:
+                        codeBuf->bytes[codeBuf->size++] = 0x31;                     /* xor r/m64, r64 */
+                        codeBuf->bytes[codeBuf->size++] = 0xC0 | (reg2 << 3) | reg; /* ModR/M */
+                        break;
+                    case INSTR_SHL:
+                        codeBuf->bytes[codeBuf->size++] = 0xD3;                     /* shl r/m64, cl */
+                        codeBuf->bytes[codeBuf->size++] = 0xE0 | reg;               /* ModR/M */
+                        break;
+                    case INSTR_SHR:
+                        codeBuf->bytes[codeBuf->size++] = 0xD3;                     /* shr r/m64, cl */
+                        codeBuf->bytes[codeBuf->size++] = 0xE8 | reg;               /* ModR/M */
+                        break;
+                    default:
+                        color_error("internal error: unknown instruction type");
+                        exit(1);
                 }
             }
+            break;
+        }
+
+        case INSTR_NOT: {
+            /* Format: not <reg> */
+            char *token = strtok(trimmed, " ,\t"); /* "not" */
+            if (!token) {
+                color_error("expected 'not' instruction");
+                exit(1);
+            }
+            char *reg = strtok(NULL, " ,\t"); /* register */
+            if (!reg) {
+                color_error("expected register after 'not'");
+                exit(1);
+            }
+
+            uint8_t reg_code = syntax_get_register_code(reg);
+            if (reg_code == 0xFF) {
+                color_error("unknown register '%s'", reg);
+                exit(1);
+            }
+
+            ensure_code_buffer_capacity(codeBuf, 3);  // Need 3 bytes
+
+            /* not r64 */
+            codeBuf->bytes[codeBuf->size++] = 0x48;       /* REX.W */
+            codeBuf->bytes[codeBuf->size++] = 0xF7;       /* not r/m64 */
+            codeBuf->bytes[codeBuf->size++] = 0xD0 | reg_code; /* ModR/M: register direct */
             break;
         }
 
