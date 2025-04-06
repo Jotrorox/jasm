@@ -7,10 +7,10 @@
 /* Write the assembled code and data as a raw binary file.
    This format just outputs the raw machine code and data, without any headers.
 */
-int write_binary_file(const char *outfile,
-                      CodeBuffer *codeBuf,
-                      DataBuffer *dataBuf,
-                      uint64_t entry_point)
+int write_binary_file(const char *output_filename,
+                      const CodeBuffer *codeBuf,
+                      const DataBuffer *dataBuf,
+                      const uint64_t entry_point)
 {
     (void)entry_point;
 
@@ -28,7 +28,7 @@ int write_binary_file(const char *outfile,
     memcpy(combined_buffer + codeBuf->size, dataBuf->bytes, dataBuf->size);
 
     /* Write the combined buffer to the output file */
-    FILE *out = fopen(outfile, "wb");
+    FILE *out = fopen(output_filename, "wb");
     if (!out) {
         perror("fopen");
         free(combined_buffer);
@@ -50,7 +50,7 @@ int write_binary_file(const char *outfile,
            "binary file: %s\n",
            codeBuf->size,
            dataBuf->size,
-           outfile);
+           output_filename);
 
     return 0;
 }

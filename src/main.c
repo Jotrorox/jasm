@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include "assembler.h"
@@ -25,17 +24,6 @@ static int process_arguments(int argc,
 static void print_assembly_info(const char *input_file,
                                 const char *output_file,
                                 OutputFormat output_format);
-
-/* External binary writer functions - these are implemented elsewhere */
-extern int write_elf_file(const char *output_filename,
-                          CodeBuffer *codeBuf,
-                          DataBuffer *dataBuf,
-                          uint64_t entry_point);
-
-extern int write_binary_file(const char *output_filename,
-                             CodeBuffer *codeBuf,
-                             DataBuffer *dataBuf,
-                             uint64_t entry_point);
 
 /* Print usage information */
 static void print_usage(const char *program_name)
@@ -180,14 +168,12 @@ static void print_assembly_info(const char *input_file,
     printf("\n");
 }
 
-int main(int argc, char **argv)
+int main(const int argc, char **argv)
 {
-    const char *DEFAULT_OUTPUT = "a.out";
     const char *input_file = NULL;
     const char *output_file = NULL;
     int verbose = 0;
     OutputFormat output_format = FORMAT_ELF;
-    int result;
 
     /* Initialize color utilities */
     color_init();
@@ -196,7 +182,7 @@ int main(int argc, char **argv)
     syntax_init();
 
     /* Process command line arguments */
-    result = process_arguments(argc, argv, &input_file, &output_file, &output_format, &verbose);
+    int result = process_arguments(argc, argv, &input_file, &output_file, &output_format, &verbose);
     if (result != 0) {
         /* -1 indicates help/version was shown, exit with success */
         return result < 0 ? 0 : result;
@@ -204,11 +190,12 @@ int main(int argc, char **argv)
 
     /* If no output file was specified, use the default */
     if (!output_file) {
+        const char *DEFAULT_OUTPUT = "a.out";
         output_file = DEFAULT_OUTPUT;
     }
 
     /* Set up the assembler options */
-    AssemblerOptions options = {
+    const AssemblerOptions options = {
         .input_filename = input_file,
         .output_filename = output_file,
         .writer = (output_format == FORMAT_ELF) ? write_elf_file : write_binary_file,

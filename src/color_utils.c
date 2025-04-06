@@ -1,7 +1,3 @@
-/**
- * color_utils.c - Implementation of terminal color utilities for jasm
- */
-
 #include "color_utils.h"
 #include <stdio.h>
 #include <stdlib.h>

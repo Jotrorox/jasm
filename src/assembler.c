@@ -232,7 +232,7 @@ static size_t simulate_instruction(const char *line)
                move <register>, [<symbol>]  ; load from memory
                move [<symbol>], <register>  ; store to memory
             */
-            char *token = strtok(trimmed, " ,\t"); /* "move" */
+            char *token = strtok(trimmed, " ,\t"); /* "move" */  (void)token;
             token = strtok(NULL, " ,\t");          /* destination */
             if (!token)
                 return 0;
@@ -280,7 +280,6 @@ static size_t simulate_instruction(const char *line)
                 */
                 return 7;
             }
-            break;
         }
 
         case INSTR_CALL:
@@ -346,7 +345,6 @@ static size_t simulate_instruction(const char *line)
                 */
                 return 3;
             }
-            break;
         }
 
         case INSTR_NOT: {
@@ -368,14 +366,11 @@ static size_t simulate_instruction(const char *line)
                - ModR/M (1 byte)
             */
             return 3;
-            break;
         }
 
         default:
             return 0;
     }
-
-    return 0;
 }
 
 /* First pass: simulate code emission and collect data directives.
@@ -454,7 +449,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
                move <register>, [<symbol>]  ; load from memory
                move [<symbol>], <register>  ; store to memory
             */
-            char *token = strtok(trimmed, " ,\t"); /* "move" */
+            char *token = strtok(trimmed, " ,\t"); /* "move" */ (void)token;
             token = strtok(NULL, " ,\t");          /* destination */
             if (!token) {
                 color_error("expected destination after 'move'");
@@ -484,7 +479,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
                 }
 
                 /* Calculate relative offset from next instruction */
-                int64_t rel_addr = addr - (BASE_ADDR + CODE_OFFSET + codeBuf->size + 7);
+                const int64_t rel_addr = addr - (BASE_ADDR + CODE_OFFSET + codeBuf->size + 7);
 
                 /* mov [rip + disp32], reg */
                 codeBuf->bytes[codeBuf->size++] = 0x48;              /* REX.W */
@@ -616,10 +611,6 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
                 case INSTR_JUMPEQ:
                     codeBuf->bytes[codeBuf->size++] = 0x84; /* je */
                     break;
-                default:
-                    /* Should never reach here */
-                    color_error("internal error: unknown jump type");
-                    exit(1);
             }
 
             /* 32-bit relative offset */
@@ -640,10 +631,10 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
             label = syntax_trim(label);
 
             /* Look up label address */
-            uint64_t target = lookup_symbol(label);
+            const uint64_t target = lookup_symbol(label);
 
             /* Calculate relative offset from next instruction */
-            int64_t rel_addr = target - (BASE_ADDR + CODE_OFFSET + codeBuf->size + 5);
+            const int64_t rel_addr = target - (BASE_ADDR + CODE_OFFSET + codeBuf->size + 5);
 
             /* Check if offset fits in 32 bits */
             if (rel_addr < INT32_MIN || rel_addr > INT32_MAX) {
@@ -930,7 +921,7 @@ static void process_data_buffer(DataBuffer *dataBuf, uint64_t dataBase)
 /* Convenience wrapper for ELF output */
 int assemble_to_elf(const char *input_filename, const char *output_filename)
 {
-    AssemblerOptions options = {.input_filename = input_filename,
+    const AssemblerOptions options = {.input_filename = input_filename,
                                 .output_filename = output_filename,
                                 .writer = write_elf_file,
                                 .verbose = 0};

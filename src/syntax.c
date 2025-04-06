@@ -1,7 +1,3 @@
-/**
- * syntax.c - Implementation of syntax definitions for jasm assembler
- */
-
 #include "syntax.h"
 #include <ctype.h>
 #include <stdint.h>
@@ -87,7 +83,7 @@ char *syntax_trim(char *str)
     return str;
 }
 
-/* Determine the type of a syntax element */
+/* Determine the type of syntax element */
 SyntaxElementType syntax_get_element_type(const char *str)
 {
     if (!str || !*str)

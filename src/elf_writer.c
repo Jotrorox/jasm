@@ -11,12 +11,12 @@
 #define BASE_ADDR           0x400000
 
 /* Write the assembled code and data as an ELF executable file */
-int write_elf_file(const char *outfile,
-                   CodeBuffer *codeBuf,
-                   DataBuffer *dataBuf,
-                   uint64_t entry_point)
+int write_elf_file(const char *output_filename,
+                   const CodeBuffer *codeBuf,
+                   const DataBuffer *dataBuf,
+                   const uint64_t entry_point)
 {
-    size_t file_size = CODE_OFFSET + codeBuf->size + dataBuf->size;
+    const size_t file_size = CODE_OFFSET + codeBuf->size + dataBuf->size;
     uint8_t *file_buf = calloc(1, file_size);
     if (!file_buf) {
         perror("calloc");
@@ -87,7 +87,7 @@ int write_elf_file(const char *outfile,
     /* Append data section */
     memcpy(file_buf + CODE_OFFSET + codeBuf->size, dataBuf->bytes, dataBuf->size);
 
-    FILE *out = fopen(outfile, "wb");
+    FILE *out = fopen(output_filename, "wb");
     if (!out) {
         perror("fopen");
         free(file_buf);
@@ -108,7 +108,7 @@ int write_elf_file(const char *outfile,
            "file: %s\n",
            codeBuf->size,
            dataBuf->size,
-           outfile);
+           output_filename);
 
     return 0;
 }
