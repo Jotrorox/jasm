@@ -9,11 +9,12 @@
 typedef struct {
     const char *build_type;
     bool verbose;
+    bool quiet;
     const char *output_dir;
     bool clean;
-    bool install;
-    const char *prefix;
-    bool uninstall;
+    bool static_build;
+    const char *cc;
+    bool force_clean;  // New option for forcing directory deletion
 } BuildConfig;
 
 // Compiler flags for different build types
@@ -37,7 +38,11 @@ static void append_compiler_flags(Nob_Cmd *cmd, const char *build_type)
                        "-fstrict-aliasing",
                        "-flto",
                        "-march=native",
-                       "-funroll-loops");
+                       "-funroll-loops",
+                       "-fstack-protector-strong",
+                       "-fstack-clash-protection",
+                       "-fcf-protection=full",
+                       "-D_FORTIFY_SOURCE=2");
     } else if (strcmp(build_type, "Verbose") == 0) {
         nob_cmd_append(cmd, "-DVERBOSE", "-O2", "-Wall", "-Wextra");
     } else {
@@ -67,12 +72,13 @@ static bool get_source_files(Nob_File_Paths *sources)
 }
 
 // Clean build directory
-static bool clean_build_dir(const char *output_dir)
+static bool clean_build_dir(const char *output_dir, bool force_clean)
 {
     Nob_File_Paths files = {0};
     if (!nob_read_entire_dir(output_dir, &files))
         return false;
 
+    bool success = true;
     for (size_t i = 0; i < files.count; ++i) {
         // Skip . and .. directory entries
         if (strcmp(files.items[i], ".") == 0 || strcmp(files.items[i], "..") == 0) {
@@ -86,30 +92,35 @@ static bool clean_build_dir(const char *output_dir)
         nob_sb_append_null(&path);
 
         if (!nob_delete_file(path.items)) {
-            nob_sb_free(path);
-            nob_da_free(files);
-            return false;
+            if (force_clean) {
+                nob_sb_free(path);
+                nob_da_free(files);
+                return false;
+            }
+            success = false;
         }
 
         nob_sb_free(path);
     }
 
     nob_da_free(files);
-    return true;
+    return success;
 }
 
 // Compile a single source file
 static bool compile_source_file(const char *src_file,
                                 const char *obj_file,
                                 const char *build_type,
-                                bool verbose)
+                                bool verbose,
+                                bool quiet,
+                                const char *cc)
 {
     Nob_Cmd cmd = {0};
-    nob_cmd_append(&cmd, "cc", "-c", "-Ilib");
+    nob_cmd_append(&cmd, cc, "-c", "-Ilib");
     append_compiler_flags(&cmd, build_type);
     nob_cmd_append(&cmd, "-o", obj_file, src_file);
 
-    if (verbose) {
+    if (verbose && !quiet) {
         Nob_String_Builder sb = {0};
         nob_cmd_render(cmd, &sb);
         nob_sb_append_null(&sb);
@@ -124,14 +135,22 @@ static bool compile_source_file(const char *src_file,
 static bool link_executable(const char *output_dir,
                             Nob_File_Paths *obj_files,
                             const char *build_type,
-                            bool verbose)
+                            bool verbose,
+                            bool quiet,
+                            bool static_build,
+                            const char *cc)
 {
     Nob_Cmd cmd = {0};
-    nob_cmd_append(&cmd, "cc");
+    nob_cmd_append(&cmd, cc);
 
-    // Add ASAN flags only in Debug mode
-    if (strcmp(build_type, "Debug") == 0) {
+    // Add ASAN flags only in Debug mode and if not doing static build
+    if (strcmp(build_type, "Debug") == 0 && !static_build) {
         nob_cmd_append(&cmd, "-fsanitize=address");
+    }
+
+    // Add static linking flags if requested
+    if (static_build) {
+        nob_cmd_append(&cmd, "-static");
     }
 
     // Add all object files
@@ -142,7 +161,7 @@ static bool link_executable(const char *output_dir,
     // Add output executable
     nob_cmd_append(&cmd, "-o", "jasm");
 
-    if (verbose) {
+    if (verbose && !quiet) {
         Nob_String_Builder sb = {0};
         nob_cmd_render(cmd, &sb);
         nob_sb_append_null(&sb);
@@ -150,36 +169,24 @@ static bool link_executable(const char *output_dir,
         nob_sb_free(sb);
     }
 
-    return nob_cmd_run_sync_and_reset(&cmd);
-}
-
-// Install the executable
-static bool install_executable(const char *prefix)
-{
-    Nob_Cmd cmd = {0};
-    nob_cmd_append(&cmd, "install", "-D", "-m", "755", "jasm", prefix);
-
     if (!nob_cmd_run_sync_and_reset(&cmd)) {
-        nob_log(NOB_ERROR, "Failed to install jasm");
         return false;
     }
 
-    nob_log(NOB_INFO, "Installed jasm to %s", prefix);
-    return true;
-}
-
-// Uninstall the executable
-static bool uninstall_executable(const char *prefix)
-{
-    Nob_Cmd cmd = {0};
-    nob_cmd_append(&cmd, "rm", "-f", prefix);
-
-    if (!nob_cmd_run_sync_and_reset(&cmd)) {
-        nob_log(NOB_ERROR, "Failed to uninstall jasm");
-        return false;
+    // Strip the executable in Release mode
+    if (strcmp(build_type, "Release") == 0) {
+        Nob_Cmd strip_cmd = {0};
+        nob_cmd_append(&strip_cmd, "strip", "jasm");
+        if (verbose && !quiet) {
+            Nob_String_Builder sb = {0};
+            nob_cmd_render(strip_cmd, &sb);
+            nob_sb_append_null(&sb);
+            nob_log(NOB_INFO, "CMD: %s", sb.items);
+            nob_sb_free(sb);
+        }
+        return nob_cmd_run_sync_and_reset(&strip_cmd);
     }
 
-    nob_log(NOB_INFO, "Uninstalled jasm from %s", prefix);
     return true;
 }
 
@@ -197,10 +204,16 @@ static bool build_project(const BuildConfig *config)
 
     // Clean build directory if requested
     if (config->clean) {
-        if (!clean_build_dir(config->output_dir)) {
-            nob_return_defer(false);
+        if (!clean_build_dir(config->output_dir, config->force_clean)) {
+            if (config->force_clean) {
+                nob_return_defer(false);
+            } else if (!config->quiet) {
+                nob_log(NOB_WARNING, "Some files could not be deleted");
+            }
         }
-        nob_log(NOB_INFO, "Cleaned build directory");
+        if (!config->quiet) {
+            nob_log(NOB_INFO, "Cleaned build directory");
+        }
         if (config->clean) {  // If only cleaning was requested
             nob_return_defer(true);
         }
@@ -225,7 +238,7 @@ static bool build_project(const BuildConfig *config)
         nob_sb_append_cstr(&obj_path, ".o");
         nob_sb_append_null(&obj_path);
 
-        if (!compile_source_file(src_file, obj_path.items, config->build_type, config->verbose)) {
+        if (!compile_source_file(src_file, obj_path.items, config->build_type, config->verbose, config->quiet, config->cc)) {
             nob_sb_free(obj_path);
             nob_return_defer(false);
         }
@@ -235,22 +248,8 @@ static bool build_project(const BuildConfig *config)
     }
 
     // Link the executable
-    if (!link_executable(config->output_dir, &obj_files, config->build_type, config->verbose)) {
+    if (!link_executable(config->output_dir, &obj_files, config->build_type, config->verbose, config->quiet, config->static_build, config->cc)) {
         nob_return_defer(false);
-    }
-
-    // Install if requested
-    if (config->install) {
-        if (!install_executable(config->prefix)) {
-            nob_return_defer(false);
-        }
-    }
-
-    // Uninstall if requested
-    if (config->uninstall) {
-        if (!uninstall_executable(config->prefix)) {
-            nob_return_defer(false);
-        }
     }
 
 defer:
@@ -268,18 +267,17 @@ static void print_help(const char *program)
     nob_log(NOB_INFO, "Usage: %s [options]", program);
     fprintf(stderr, "\n");
     nob_log(NOB_INFO, "Build Options:");
-    nob_log(NOB_INFO, "  --type <type>    Build type (Debug, Release, Verbose)");
-    nob_log(NOB_INFO, "  --output <dir>   Output directory (default: build)");
-    nob_log(NOB_INFO, "  --verbose        Enable verbose output");
-    fprintf(stderr, "\n");
-    nob_log(NOB_INFO, "Installation Options:");
-    nob_log(NOB_INFO, "  --prefix <path>  Installation prefix (default: /usr/local/bin/jasm)");
-    nob_log(NOB_INFO, "  --install        Install the executable");
-    nob_log(NOB_INFO, "  --uninstall      Uninstall the executable");
+    nob_log(NOB_INFO, "  -t, --type <type>    Build type (Debug, Release, Verbose)");
+    nob_log(NOB_INFO, "  -o, --output <dir>   Output directory (default: build)");
+    nob_log(NOB_INFO, "  -v, --verbose        Enable verbose output");
+    nob_log(NOB_INFO, "  -q, --quiet          Disable all output except errors");
+    nob_log(NOB_INFO, "  -s, --static         Build static executable (not compatible with Debug mode)");
+    nob_log(NOB_INFO, "  -c, --cc <compiler>  C compiler to use (default: cc)");
     fprintf(stderr, "\n");
     nob_log(NOB_INFO, "Other Options:");
-    nob_log(NOB_INFO, "  --clean          Clean build directory");
-    nob_log(NOB_INFO, "  --help           Show this help message");
+    nob_log(NOB_INFO, "  -C, --clean          Clean build directory");
+    nob_log(NOB_INFO, "  -F, --force          Force clean (delete non-empty directories)");
+    nob_log(NOB_INFO, "  -h, --help           Show this help message");
 }
 
 int main(int argc, char **argv)
@@ -289,43 +287,94 @@ int main(int argc, char **argv)
     // Default configuration
     BuildConfig config = {.build_type = "Debug",
                           .verbose = false,
+                          .quiet = false,
                           .output_dir = "build",
                           .clean = false,
-                          .install = false,
-                          .prefix = "/usr/local/bin/jasm",
-                          .uninstall = false};
+                          .static_build = false,
+                          .cc = "cc",
+                          .force_clean = false};
 
     // Parse command line arguments
     for (int i = 1; i < argc; ++i) {
-        if (strcmp(argv[i], "--type") == 0 && i + 1 < argc) {
-            config.build_type = argv[++i];
-        } else if (strcmp(argv[i], "--output") == 0 && i + 1 < argc) {
-            config.output_dir = argv[++i];
-        } else if (strcmp(argv[i], "--verbose") == 0) {
+        const char *arg = argv[i];
+        if (strcmp(arg, "--type") == 0 || strcmp(arg, "-t") == 0) {
+            if (i + 1 < argc) {
+                config.build_type = argv[++i];
+            } else {
+                nob_log(NOB_ERROR, "Missing argument for %s", arg);
+                return 1;
+            }
+        } else if (strcmp(arg, "--output") == 0 || strcmp(arg, "-o") == 0) {
+            if (i + 1 < argc) {
+                config.output_dir = argv[++i];
+            } else {
+                nob_log(NOB_ERROR, "Missing argument for %s", arg);
+                return 1;
+            }
+        } else if (strcmp(arg, "--verbose") == 0 || strcmp(arg, "-v") == 0) {
             config.verbose = true;
-        } else if (strcmp(argv[i], "--clean") == 0) {
+        } else if (strcmp(arg, "--quiet") == 0 || strcmp(arg, "-q") == 0) {
+            config.quiet = true;
+            nob_minimal_log_level = NOB_ERROR;  // Only show errors in quiet mode
+        } else if (strcmp(arg, "--clean") == 0 || strcmp(arg, "-C") == 0) {
             config.clean = true;
-        } else if (strcmp(argv[i], "--install") == 0) {
-            config.install = true;
-        } else if (strcmp(argv[i], "--uninstall") == 0) {
-            config.uninstall = true;
-        } else if (strcmp(argv[i], "--prefix") == 0 && i + 1 < argc) {
-            config.prefix = argv[++i];
-        } else if (strcmp(argv[i], "--help") == 0) {
+        } else if (strcmp(arg, "--force") == 0 || strcmp(arg, "-F") == 0) {
+            config.force_clean = true;
+        } else if (strcmp(arg, "--static") == 0 || strcmp(arg, "-s") == 0) {
+            config.static_build = true;
+        } else if (strcmp(arg, "--cc") == 0 || strcmp(arg, "-c") == 0) {
+            if (i + 1 < argc) {
+                config.cc = argv[++i];
+            } else {
+                nob_log(NOB_ERROR, "Missing argument for %s", arg);
+                return 1;
+            }
+        } else if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0) {
             print_help(argv[0]);
             return 0;
         } else {
-            nob_log(NOB_ERROR, "Unknown option: %s", argv[i]);
+            nob_log(NOB_ERROR, "Unknown option: %s", arg);
             nob_log(NOB_ERROR, "Use --help for usage information");
             return 1;
         }
     }
 
+    // Check for incompatible options
+    if (config.static_build && strcmp(config.build_type, "Debug") == 0) {
+        nob_log(NOB_ERROR, "Static builds are not compatible with Debug mode (ASAN)");
+        return 1;
+    }
+
     // Print build configuration
-    nob_log(NOB_INFO, "Building JASM v%s", VERSION);
-    nob_log(NOB_INFO, "Copyright (c) %s", COPYRIGHT);
-    nob_log(NOB_INFO, "Build type: %s", config.build_type);
-    nob_log(NOB_INFO, "Output directory: %s", config.output_dir);
+    if (!config.quiet) {
+        nob_minimal_log_level = NOB_INFO;  // Show all messages in non-quiet mode
+        nob_log(NOB_INFO, "Building JASM v%s", VERSION);
+        nob_log(NOB_INFO, "Copyright (c) %s", COPYRIGHT);
+        nob_log(NOB_INFO, "Build type: %s", config.build_type);
+        nob_log(NOB_INFO, "Output directory: %s", config.output_dir);
+        nob_log(NOB_INFO, "Using compiler: %s", config.cc);
+        if (config.static_build) {
+            nob_log(NOB_INFO, "Building static executable");
+        }
+    }
+
+    // Clean build directory if requested
+    if (config.clean) {
+        if (!clean_build_dir(config.output_dir, config.force_clean)) {
+            if (config.force_clean) {
+                nob_log(NOB_ERROR, "Failed to clean build directory");
+                return 1;
+            } else if (!config.quiet) {
+                nob_log(NOB_WARNING, "Some files could not be deleted");
+            }
+        }
+        if (!config.quiet) {
+            nob_log(NOB_INFO, "Cleaned build directory");
+        }
+        if (config.clean) {  // If only cleaning was requested
+            return 0;
+        }
+    }
 
     // Build the project
     if (!build_project(&config)) {
@@ -333,6 +382,8 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    nob_log(NOB_INFO, "Build completed successfully");
+    if (!config.quiet) {
+        nob_log(NOB_INFO, "Build completed successfully");
+    }
     return 0;
 }

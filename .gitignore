@@ -1,5 +1,6 @@
 # Build directory
-/build/
+build/
+cmake-build-debug/
 
 # Editor specific files
 .vscode/
