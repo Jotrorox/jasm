@@ -37,8 +37,8 @@ void ensure_buffer_capacity(void *buffer, size_t additional_bytes);
 
 /* Write a binary file in ELF format (implementation in elf_writer.c) */
 int write_elf_file(const char *output_filename,
-                   const CodeBuffer *codeBuf,
-                   const DataBuffer *dataBuf,
+                   CodeBuffer *codeBuf,
+                   DataBuffer *dataBuf,
                    uint64_t entry_point);
 
 /* Write a raw binary file (implementation in raw_writer.c) */

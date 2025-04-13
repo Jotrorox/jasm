@@ -5,8 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "binary_writer.h"
-#include "color_utils.h" /* Include our new color utilities */
-#include "syntax.h"      /* Include the new syntax module */
+#include "color_utils.h"
+#include "syntax.h"
 
 /* ---- Internal Constants and Structures ---- */
 

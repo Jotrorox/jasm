@@ -12,9 +12,9 @@
 
 /* Write the assembled code and data as an ELF executable file */
 int write_elf_file(const char *output_filename,
-                   const CodeBuffer *codeBuf,
-                   const DataBuffer *dataBuf,
-                   const uint64_t entry_point)
+                   CodeBuffer *codeBuf,
+                   DataBuffer *dataBuf,
+                   uint64_t entry_point)
 {
     const size_t file_size = CODE_OFFSET + codeBuf->size + dataBuf->size;
     uint8_t *file_buf = calloc(1, file_size);
