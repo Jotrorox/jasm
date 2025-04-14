@@ -19,3 +19,6 @@ output.txt
 
 # Don't ignore the .clang-format file
 !.clang-format
+
+.direnv
+.cache

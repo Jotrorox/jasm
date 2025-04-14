@@ -16,8 +16,8 @@
       devShells.default = pkgs.mkShell {
         packages = with pkgs; [
           cmake
-          llvmPkgs.clang
           llvmPkgs.clang-tools
+          gcc
           stdenv.cc.libc.dev
         ];
 

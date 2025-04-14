@@ -4,6 +4,7 @@
 #define VERSION   "0.1"
 #define AUTHOR    "Johannes (Jotrorox) Müller"
 #define COPYRIGHT "2025 " AUTHOR
+#define LICENSE   "MIT"
 
 // Build configuration
 typedef struct {
@@ -25,10 +26,10 @@ static void append_compiler_flags(Nob_Cmd *cmd, const char *build_type)
                        "-g",
                        "-fsanitize=address",
                        "-fno-omit-frame-pointer",
-                       "-fno-inline",
-                       "-fno-strict-aliasing",
+                       "-fno-strict-overflow",
                        "-fno-lto",
-                       "-O0");
+                       "-O1",
+                       "-D_FORTIFY_SOURCE=2");
     } else if (strcmp(build_type, "Release") == 0) {
         nob_cmd_append(cmd,
                        "-DNDEBUG",
@@ -46,7 +47,7 @@ static void append_compiler_flags(Nob_Cmd *cmd, const char *build_type)
     } else if (strcmp(build_type, "Verbose") == 0) {
         nob_cmd_append(cmd, "-DVERBOSE", "-O2", "-Wall", "-Wextra");
     } else {
-        nob_cmd_append(cmd, "-Wall", "-Wextra");  // Default flags
+        nob_cmd_append(cmd, "-Wall", "-Wextra");
     }
 }
 
@@ -263,6 +264,7 @@ static void print_help(const char *program)
 {
     nob_log(NOB_INFO, "JASM Assembler v%s", VERSION);
     nob_log(NOB_INFO, "Copyright (c) %s", COPYRIGHT);
+    nob_log(NOB_INFO, "License: %s", LICENSE);
     fprintf(stderr, "\n");
     nob_log(NOB_INFO, "Usage: %s [options]", program);
     fprintf(stderr, "\n");
