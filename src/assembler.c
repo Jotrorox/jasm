@@ -7,6 +7,7 @@
 #include "binary_writer.h"
 #include "color_utils.h"
 #include "syntax.h"
+#include "error.h"
 
 /* ---- Internal Constants and Structures ---- */
 
@@ -40,15 +41,16 @@ static void add_symbol(const char *name, uint64_t value)
     symbolCount++;
 }
 
-/* Lookup symbol value by name. Exits if symbol not found. */
-static uint64_t lookup_symbol(const char *name)
+/* Lookup symbol value by name. Returns 0 and reports error if symbol not found. */
+static uint64_t lookup_symbol(const char *name, const char *filename, int line_number, const char *line_content)
 {
     for (size_t i = 0; i < symbolCount; i++) {
         if (strcmp(symbols[i].name, name) == 0)
             return symbols[i].value;
     }
-    color_error("unknown symbol '%s'", name);
-    exit(1);
+    error_report(filename, line_number, 0, line_content, ERROR_SEVERITY_ERROR,
+                "unknown symbol '%s'", name);
+    return 0;
 }
 
 /* Check if a line is a label definition (ends with ':') */
@@ -470,7 +472,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
                 ensure_code_buffer_capacity(codeBuf, 7);  // Need 7 bytes
 
                 char *symbol = syntax_extract_memory_reference(dest);
-                uint64_t addr = lookup_symbol(symbol);
+                uint64_t addr = lookup_symbol(symbol, NULL, 0, NULL);
                 uint8_t reg = syntax_get_register_code(token);
 
                 if (reg == 0xFF) {
@@ -493,7 +495,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
                 ensure_code_buffer_capacity(codeBuf, 7);  // Need 7 bytes
 
                 char *symbol = syntax_extract_memory_reference(token);
-                uint64_t addr = lookup_symbol(symbol);
+                uint64_t addr = lookup_symbol(symbol, NULL, 0, NULL);
                 uint8_t reg = syntax_get_register_code(dest);
 
                 if (reg == 0xFF) {
@@ -543,7 +545,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
                 /* Move symbol address to register */
                 ensure_code_buffer_capacity(codeBuf, 7);  // Need 7 bytes
 
-                uint64_t symVal = lookup_symbol(token);
+                uint64_t symVal = lookup_symbol(token, NULL, 0, NULL);
                 uint8_t reg = syntax_get_register_code(dest);
 
                 if (reg == 0xFF) {
@@ -587,7 +589,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
             label = syntax_trim(label);
 
             /* Look up label address */
-            uint64_t target = lookup_symbol(label);
+            uint64_t target = lookup_symbol(label, NULL, 0, NULL);
 
             /* Calculate relative offset from next instruction */
             int64_t rel_addr = target - (BASE_ADDR + CODE_OFFSET + codeBuf->size + 6);
@@ -631,7 +633,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
             label = syntax_trim(label);
 
             /* Look up label address */
-            const uint64_t target = lookup_symbol(label);
+            const uint64_t target = lookup_symbol(label, NULL, 0, NULL);
 
             /* Calculate relative offset from next instruction */
             const int64_t rel_addr = target - (BASE_ADDR + CODE_OFFSET + codeBuf->size + 5);
