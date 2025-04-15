@@ -11,13 +11,13 @@ void print_usage(const char *program_name);
 void print_version(void);
 OutputFormat parse_format(const char *format_str);
 int process_arguments(int argc,
-                     char **argv,
-                     const char **input_file,
-                     const char **output_file,
-                     OutputFormat *output_format,
-                     int *verbose);
+                      char **argv,
+                      const char **input_file,
+                      const char **output_file,
+                      OutputFormat *output_format,
+                      int *verbose);
 void print_assembly_info(const char *input_file,
-                        const char *output_file,
-                        OutputFormat output_format);
+                         const char *output_file,
+                         OutputFormat output_format);
 
-#endif /* CLI_H */ 
+#endif /* CLI_H */

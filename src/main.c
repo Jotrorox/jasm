@@ -2,10 +2,10 @@
 #include <sys/stat.h>
 #include "assembler.h"
 #include "binary_writer.h"
-#include "color_utils.h"
-#include "syntax.h"
 #include "cli.h"
+#include "color_utils.h"
 #include "error.h"
+#include "syntax.h"
 
 int main(const int argc, char **argv)
 {

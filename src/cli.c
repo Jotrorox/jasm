@@ -1,6 +1,6 @@
+#include "cli.h"
 #include <stdio.h>
 #include <string.h>
-#include "cli.h"
 #include "color_utils.h"
 
 #define VERSION "0.1"
@@ -74,11 +74,11 @@ OutputFormat parse_format(const char *format_str)
 
 /* Process command line arguments */
 int process_arguments(int argc,
-                     char **argv,
-                     const char **input_file,
-                     const char **output_file,
-                     OutputFormat *output_format,
-                     int *verbose)
+                      char **argv,
+                      const char **input_file,
+                      const char **output_file,
+                      OutputFormat *output_format,
+                      int *verbose)
 {
     const char *format_str = NULL;
 
@@ -133,8 +133,8 @@ int process_arguments(int argc,
 
 /* Print assembly information if verbose mode is enabled */
 void print_assembly_info(const char *input_file,
-                        const char *output_file,
-                        OutputFormat output_format)
+                         const char *output_file,
+                         OutputFormat output_format)
 {
     printf("\n");
     color_printf(COLOR_BOLD COLOR_BRIGHT_BLUE, "JASM Assembler v%s\n", VERSION);
@@ -146,4 +146,4 @@ void print_assembly_info(const char *input_file,
     color_printf(COLOR_RESET, "Format:      ");
     color_printf(COLOR_BRIGHT_YELLOW, "%s\n", output_format == FORMAT_ELF ? "ELF" : "Binary");
     printf("\n");
-} 
+}

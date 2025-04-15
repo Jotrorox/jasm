@@ -6,8 +6,8 @@
 #include <string.h>
 #include "binary_writer.h"
 #include "color_utils.h"
-#include "syntax.h"
 #include "error.h"
+#include "syntax.h"
 
 /* ---- Internal Constants and Structures ---- */
 
@@ -42,14 +42,17 @@ static void add_symbol(const char *name, uint64_t value)
 }
 
 /* Lookup symbol value by name. Returns 0 and reports error if symbol not found. */
-static uint64_t lookup_symbol(const char *name, const char *filename, int line_number, const char *line_content)
+static uint64_t lookup_symbol(const char *name,
+                              const char *filename,
+                              int line_number,
+                              const char *line_content)
 {
     for (size_t i = 0; i < symbolCount; i++) {
         if (strcmp(symbols[i].name, name) == 0)
             return symbols[i].value;
     }
-    error_report(filename, line_number, 0, line_content, ERROR_SEVERITY_ERROR,
-                "unknown symbol '%s'", name);
+    error_report(
+        filename, line_number, 0, line_content, ERROR_SEVERITY_ERROR, "unknown symbol '%s'", name);
     return 0;
 }
 
@@ -234,8 +237,9 @@ static size_t simulate_instruction(const char *line)
                move <register>, [<symbol>]  ; load from memory
                move [<symbol>], <register>  ; store to memory
             */
-            char *token = strtok(trimmed, " ,\t"); /* "move" */  (void)token;
-            token = strtok(NULL, " ,\t");          /* destination */
+            char *token = strtok(trimmed, " ,\t"); /* "move" */
+            (void)token;
+            token = strtok(NULL, " ,\t"); /* destination */
             if (!token)
                 return 0;
             char dest[MAX_LINE_LEN];
@@ -428,8 +432,19 @@ static void ensure_data_buffer_capacity(DataBuffer *dataBuf, size_t additional_b
     ensure_buffer_capacity(dataBuf, additional_bytes);
 }
 
-static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
+typedef struct {
+    CodeBuffer *codeBuf;
+    const char *filename;
+    int line_number;
+    const char *line_content;
+} EmitContext;
+
+static void emit_instruction_line_ctx(EmitContext *ctx, const char *line)
 {
+    CodeBuffer *codeBuf = ctx->codeBuf;
+    const char *filename = ctx->filename;
+    int line_number = ctx->line_number;
+    const char *line_content = ctx->line_content;
     char buf[MAX_LINE_LEN];
     strncpy(buf, line, MAX_LINE_LEN - 1);
     buf[MAX_LINE_LEN - 1] = '\0';
@@ -451,8 +466,9 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
                move <register>, [<symbol>]  ; load from memory
                move [<symbol>], <register>  ; store to memory
             */
-            char *token = strtok(trimmed, " ,\t"); /* "move" */ (void)token;
-            token = strtok(NULL, " ,\t");          /* destination */
+            char *token = strtok(trimmed, " ,\t"); /* "move" */
+            (void)token;
+            token = strtok(NULL, " ,\t"); /* destination */
             if (!token) {
                 color_error("expected destination after 'move'");
                 exit(1);
@@ -472,7 +488,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
                 ensure_code_buffer_capacity(codeBuf, 7);  // Need 7 bytes
 
                 char *symbol = syntax_extract_memory_reference(dest);
-                uint64_t addr = lookup_symbol(symbol, NULL, 0, NULL);
+                uint64_t addr = lookup_symbol(symbol, filename, line_number, line_content);
                 uint8_t reg = syntax_get_register_code(token);
 
                 if (reg == 0xFF) {
@@ -495,7 +511,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
                 ensure_code_buffer_capacity(codeBuf, 7);  // Need 7 bytes
 
                 char *symbol = syntax_extract_memory_reference(token);
-                uint64_t addr = lookup_symbol(symbol, NULL, 0, NULL);
+                uint64_t addr = lookup_symbol(symbol, filename, line_number, line_content);
                 uint8_t reg = syntax_get_register_code(dest);
 
                 if (reg == 0xFF) {
@@ -545,7 +561,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
                 /* Move symbol address to register */
                 ensure_code_buffer_capacity(codeBuf, 7);  // Need 7 bytes
 
-                uint64_t symVal = lookup_symbol(token, NULL, 0, NULL);
+                uint64_t symVal = lookup_symbol(token, filename, line_number, line_content);
                 uint8_t reg = syntax_get_register_code(dest);
 
                 if (reg == 0xFF) {
@@ -589,7 +605,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
             label = syntax_trim(label);
 
             /* Look up label address */
-            uint64_t target = lookup_symbol(label, NULL, 0, NULL);
+            uint64_t target = lookup_symbol(label, filename, line_number, line_content);
 
             /* Calculate relative offset from next instruction */
             int64_t rel_addr = target - (BASE_ADDR + CODE_OFFSET + codeBuf->size + 6);
@@ -633,7 +649,7 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
             label = syntax_trim(label);
 
             /* Look up label address */
-            const uint64_t target = lookup_symbol(label, NULL, 0, NULL);
+            const uint64_t target = lookup_symbol(label, filename, line_number, line_content);
 
             /* Calculate relative offset from next instruction */
             const int64_t rel_addr = target - (BASE_ADDR + CODE_OFFSET + codeBuf->size + 5);
@@ -694,8 +710,8 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
 
                 uint64_t val = strtoull(second, NULL, 0);
 
-                codeBuf->bytes[codeBuf->size++] = 0x48;       /* REX.W */
-                codeBuf->bytes[codeBuf->size++] = 0x81;       /* op r/m64, imm32 */
+                codeBuf->bytes[codeBuf->size++] = 0x48; /* REX.W */
+                codeBuf->bytes[codeBuf->size++] = 0x81; /* op r/m64, imm32 */
 
                 /* Set the appropriate opcode based on instruction type */
                 switch (instrType) {
@@ -755,51 +771,51 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
                 /* Set the appropriate opcode based on instruction type */
                 switch (instrType) {
                     case INSTR_COMP:
-                        codeBuf->bytes[codeBuf->size++] = 0x39;                     /* cmp r/m64, r64 */
+                        codeBuf->bytes[codeBuf->size++] = 0x39; /* cmp r/m64, r64 */
                         codeBuf->bytes[codeBuf->size++] = 0xC0 | (reg2 << 3) | reg; /* ModR/M */
                         break;
                     case INSTR_ADD:
-                        codeBuf->bytes[codeBuf->size++] = 0x01;                     /* add r/m64, r64 */
+                        codeBuf->bytes[codeBuf->size++] = 0x01; /* add r/m64, r64 */
                         codeBuf->bytes[codeBuf->size++] = 0xC0 | (reg2 << 3) | reg; /* ModR/M */
                         break;
                     case INSTR_SUB:
-                        codeBuf->bytes[codeBuf->size++] = 0x29;                     /* sub r/m64, r64 */
+                        codeBuf->bytes[codeBuf->size++] = 0x29; /* sub r/m64, r64 */
                         codeBuf->bytes[codeBuf->size++] = 0xC0 | (reg2 << 3) | reg; /* ModR/M */
                         break;
                     case INSTR_MUL:
-                        codeBuf->bytes[codeBuf->size++] = 0x0F;                     /* imul r64, r/m64 */
-                        codeBuf->bytes[codeBuf->size++] = 0xAF;                     /* imul */
+                        codeBuf->bytes[codeBuf->size++] = 0x0F; /* imul r64, r/m64 */
+                        codeBuf->bytes[codeBuf->size++] = 0xAF; /* imul */
                         codeBuf->bytes[codeBuf->size++] = 0xC0 | (reg << 3) | reg2; /* ModR/M */
                         break;
                     case INSTR_DIV:
-                        codeBuf->bytes[codeBuf->size++] = 0x48;                     /* REX.W */
-                        codeBuf->bytes[codeBuf->size++] = 0xF7;                     /* idiv r/m64 */
-                        codeBuf->bytes[codeBuf->size++] = 0xF8 | reg2;              /* ModR/M */
+                        codeBuf->bytes[codeBuf->size++] = 0x48;        /* REX.W */
+                        codeBuf->bytes[codeBuf->size++] = 0xF7;        /* idiv r/m64 */
+                        codeBuf->bytes[codeBuf->size++] = 0xF8 | reg2; /* ModR/M */
                         break;
                     case INSTR_MOD:
-                        codeBuf->bytes[codeBuf->size++] = 0x48;                     /* REX.W */
-                        codeBuf->bytes[codeBuf->size++] = 0xF7;                     /* idiv r/m64 */
-                        codeBuf->bytes[codeBuf->size++] = 0xF8 | reg2;              /* ModR/M */
+                        codeBuf->bytes[codeBuf->size++] = 0x48;        /* REX.W */
+                        codeBuf->bytes[codeBuf->size++] = 0xF7;        /* idiv r/m64 */
+                        codeBuf->bytes[codeBuf->size++] = 0xF8 | reg2; /* ModR/M */
                         break;
                     case INSTR_AND:
-                        codeBuf->bytes[codeBuf->size++] = 0x21;                     /* and r/m64, r64 */
+                        codeBuf->bytes[codeBuf->size++] = 0x21; /* and r/m64, r64 */
                         codeBuf->bytes[codeBuf->size++] = 0xC0 | (reg2 << 3) | reg; /* ModR/M */
                         break;
                     case INSTR_OR:
-                        codeBuf->bytes[codeBuf->size++] = 0x09;                     /* or r/m64, r64 */
+                        codeBuf->bytes[codeBuf->size++] = 0x09; /* or r/m64, r64 */
                         codeBuf->bytes[codeBuf->size++] = 0xC0 | (reg2 << 3) | reg; /* ModR/M */
                         break;
                     case INSTR_XOR:
-                        codeBuf->bytes[codeBuf->size++] = 0x31;                     /* xor r/m64, r64 */
+                        codeBuf->bytes[codeBuf->size++] = 0x31; /* xor r/m64, r64 */
                         codeBuf->bytes[codeBuf->size++] = 0xC0 | (reg2 << 3) | reg; /* ModR/M */
                         break;
                     case INSTR_SHL:
-                        codeBuf->bytes[codeBuf->size++] = 0xD3;                     /* shl r/m64, cl */
-                        codeBuf->bytes[codeBuf->size++] = 0xE0 | reg;               /* ModR/M */
+                        codeBuf->bytes[codeBuf->size++] = 0xD3;       /* shl r/m64, cl */
+                        codeBuf->bytes[codeBuf->size++] = 0xE0 | reg; /* ModR/M */
                         break;
                     case INSTR_SHR:
-                        codeBuf->bytes[codeBuf->size++] = 0xD3;                     /* shr r/m64, cl */
-                        codeBuf->bytes[codeBuf->size++] = 0xE8 | reg;               /* ModR/M */
+                        codeBuf->bytes[codeBuf->size++] = 0xD3;       /* shr r/m64, cl */
+                        codeBuf->bytes[codeBuf->size++] = 0xE8 | reg; /* ModR/M */
                         break;
                     default:
                         color_error("internal error: unknown instruction type");
@@ -831,15 +847,50 @@ static void emit_instruction_line(CodeBuffer *codeBuf, const char *line)
             ensure_code_buffer_capacity(codeBuf, 3);  // Need 3 bytes
 
             /* not r64 */
-            codeBuf->bytes[codeBuf->size++] = 0x48;       /* REX.W */
-            codeBuf->bytes[codeBuf->size++] = 0xF7;       /* not r/m64 */
+            codeBuf->bytes[codeBuf->size++] = 0x48;            /* REX.W */
+            codeBuf->bytes[codeBuf->size++] = 0xF7;            /* not r/m64 */
             codeBuf->bytes[codeBuf->size++] = 0xD0 | reg_code; /* ModR/M: register direct */
             break;
         }
 
-        default:
-            color_error("unknown instruction '%s'", trimmed);
+        default: {
+            // Find the start and end of the unknown instruction in the line
+            const char *err_token = trimmed;
+            const char *line_ptr = line_content;
+            int col = 1;
+            // Find the first non-space character in the line_content
+            while (*line_ptr && isspace((unsigned char)*line_ptr)) {
+                line_ptr++;
+                col++;
+            }
+            // Find the position of the unknown instruction in the line_content
+            const char *found = strstr(line_ptr, err_token);
+            if (found) {
+                col += (int)(found - line_ptr);
+            } else {
+                found = line_ptr;
+            }
+            // Print the error header
+            color_printf(COLOR_BOLD, "%s:%d:%d: ", filename, line_number, col);
+            color_printf(COLOR_RED, "error: ");
+            color_printf(COLOR_BOLD COLOR_BRIGHT_RED, "unknown instruction '");
+            color_printf(COLOR_BRIGHT_YELLOW, "%s", err_token);
+            color_printf(COLOR_BOLD COLOR_BRIGHT_RED, "'\n");
+            // Print the line content
+            color_printf(COLOR_BRIGHT_WHITE, "    %s\n", line_content ? line_content : "");
+            // Print the caret line with color under the token
+            if (col > 0) {
+                color_printf(COLOR_BRIGHT_WHITE, "    ");
+                for (int i = 1; i < col; i++)
+                    printf(" ");
+                color_printf(COLOR_BOLD COLOR_BRIGHT_RED, "^");
+                // Optionally underline the whole token
+                for (size_t j = 1; j < strlen(err_token); j++)
+                    color_printf(COLOR_BOLD COLOR_BRIGHT_RED, "~");
+                color_printf(COLOR_RESET, "\n");
+            }
             exit(1);
+        }
     }
 }
 
@@ -924,9 +975,9 @@ static void process_data_buffer(DataBuffer *dataBuf, uint64_t dataBase)
 int assemble_to_elf(const char *input_filename, const char *output_filename)
 {
     const AssemblerOptions options = {.input_filename = input_filename,
-                                .output_filename = output_filename,
-                                .writer = write_elf_file,
-                                .verbose = 0};
+                                      .output_filename = output_filename,
+                                      .writer = write_elf_file,
+                                      .verbose = 0};
     return assemble(&options);
 }
 
@@ -996,7 +1047,8 @@ int assemble(const AssemblerOptions *options)
         char *trimmed = syntax_trim(lines[i]);
         if (trimmed[0] == '\0' || syntax_is_comment(trimmed) || syntax_is_data_directive(trimmed))
             continue;
-        emit_instruction_line(&codeBuf, trimmed);
+        EmitContext ctx = {&codeBuf, options->input_filename, (int)i + 1, lines[i]};
+        emit_instruction_line_ctx(&ctx, trimmed);
     }
 
     if (options->verbose) {
