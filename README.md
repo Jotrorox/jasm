@@ -5,9 +5,8 @@ A modern, user-friendly x86_64 assembler for Linux.
 ## Features
 
 - Simple, intuitive syntax
-- Support for all x86_64 instructions
+- Support for most x86_64 instructions
 - ELF and raw binary output formats
-- Built-in debugging support
 - Fast compilation times
 - Comprehensive error messages
 
@@ -36,9 +35,10 @@ Additional build options:
 - `--verbose`: Show detailed build information
 - `--output <dir>`: Specify output directory (default: build)
 - `--clean`: Clean the build directory
-- `--install`: Install the executable
-- `--uninstall`: Uninstall the executable
-- `--prefix <path>`: Specify installation prefix (default: /usr/local/bin/jasm)
+- `--verbose`: Show verbose output
+- `--quiet`: Suppress output
+- `--cc <path>`: Specify the C compiler (default: cc)
+- `--help`: Show help message
 
 ### System Requirements
 
