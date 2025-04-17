@@ -1,24 +1,2 @@
-# Build directory
-build/
-cmake-build-debug/
-
-# Editor specific files
-.vscode/
-.idea/
-
-# Binary files
-*.o
-*.out
-*.exe
-jasm
-nob
-nob.old
-
-# Test files
-output.txt
-
-# Don't ignore the .clang-format file
-!.clang-format
-
-.direnv
-.cache
+.zig-cache/
+zig-out
