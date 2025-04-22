@@ -1,82 +1,30 @@
 # JASM Assembler
 
-A modern, user-friendly x86_64 assembler for Linux.
+ToDo
 
 ## Features
 
-- Simple, intuitive syntax
-- Support for most x86_64 instructions
-- ELF and raw binary output formats
-- Fast compilation times
-- Comprehensive error messages
+ToDo
 
 ## Installation
 
 ### Building from Source
 
-1. Clone the repository:
-```bash
-git clone https://github.com/jotrorox/jasm.git
-cd jasm
-```
-
-2. Build the project:
-```bash
-cc -o nob nob.c
-./nob --type Release
-```
-
-The build system supports different build types:
-- `Debug`: Includes debugging symbols and ASAN (Address Sanitizer)
-- `Release`: Optimized build with maximum performance
-- `Verbose`: Includes additional warnings and debug information
-
-Additional build options:
-- `--verbose`: Show detailed build information
-- `--output <dir>`: Specify output directory (default: build)
-- `--clean`: Clean the build directory
-- `--verbose`: Show verbose output
-- `--quiet`: Suppress output
-- `--cc <path>`: Specify the C compiler (default: cc)
-- `--help`: Show help message
+ToDo
 
 ### System Requirements
 
-- Linux x86_64
-- A C compiler (`cc` in your path)
+ToDo
 
 ## Usage
 
-Basic usage:
-```bash
-jasm input.jasm [output]
-```
-
-Options:
-- `-h, --help`: Display help message
-- `-v, --verbose`: Enable verbose output
-- `-V, --version`: Display version information
-- `-f, --format <format>`: Specify output format (elf, bin)
+ToDo
 
 ## Examples
 
 ### Hello World
-```jasm
-# Example: Print "Hello, world!" to stdout
-data msg "Hello, World!\n"
 
-# sys_write(stdout, msg, 14)
-mov rax, 1       # sys_write
-mov rdi, 1       # stdout
-mov rsi, msg     # message
-mov rdx, 14      # length
-call
-
-# sys_exit(0)
-mov rax, 60      # sys_exit
-mov rdi, 0       # status
-call
-```
+ToDo
 
 ## Documentation
 
