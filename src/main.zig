@@ -1,7 +1,23 @@
 const std = @import("std");
 const cli_parser = @import("cli_parser.zig");
+const ansi = @import("ansi_styles.zig");
+
+const name = "jasm";
+const version = "0.2.0";
+const copyright = "Copyright (c) 2025 Johannes (jotrorox) Müller";
 
 pub fn main() !void {
+    // Combine styles used frequently for brevity
+    const style_bold = ansi.bold;
+    const style_error = ansi.bold ++ ansi.fg_red; // Bold Red for Error:
+    const style_err_msg = ansi.fg_red; // Red for error message text
+    const style_prog = ansi.bold ++ ansi.fg_cyan; // Bold Cyan for program name
+    const style_flag = ansi.fg_green; // Green for flags
+    const style_version = ansi.fg_green; // Green for version number
+    const style_file = ansi.fg_yellow; // Yellow for filename
+    const style_dim = ansi.dim; // Dim for copyright
+    const reset = ansi.reset; // Reset code
+
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
     defer _ = gpa.deinit();
@@ -14,32 +30,40 @@ pub fn main() !void {
 
     try cli_args.parse(&args_iterator);
 
-    std.debug.print("Options:\n", .{});
-    for (cli_args.options.items) |option| {
-        // Print with correct dashes based on option name length (simple heuristic)
-        const dash = if (option.name.len == 1) "-" else "--";
-        std.debug.print("  {s}{s}: {s}\n", .{ dash, option.name, option.value });
+    if (cli_args.getOption("help")) |_| {
+        std.debug.print("{s}Usage:{s} {s}{s}{s} [options] [file]\n", .{
+            style_bold, reset, style_prog, name, reset,
+        });
+        std.debug.print("\n{s}Options:{s}\n", .{ style_bold, reset });
+        std.debug.print("  {s}-h{s}, {s}--help{s}      Display this help message\n", .{
+            style_flag, reset, style_flag, reset,
+        });
+        std.debug.print("  {s}-V{s}, {s}--version{s}   Display version information\n", .{
+            style_flag, reset, style_flag, reset,
+        });
+        return;
     }
 
-    std.debug.print("Positional arguments:\n", .{});
-    for (cli_args.positional.items) |arg| {
-        std.debug.print("  {s}\n", .{arg});
+    if (cli_args.getOption("version")) |_| {
+        std.debug.print("{s}{s}{s} {s}{s}{s}\n", .{
+            style_prog, name, reset, style_version, version, reset,
+        });
+        std.debug.print("{s}{s}{s}\n", .{ style_dim, copyright, reset });
+        return;
     }
 
-    // Example of using getOption (now searching for names without leading dashes)
-    if (cli_args.getOption("name")) |name| {
-        std.debug.print("Found name option with value: {s}\n", .{name});
-    } else {
-        std.debug.print("Name option not found.\n", .{});
+    if (cli_args.positional.items.len == 0) {
+        std.debug.print("{s}Error:{s} {s}No input file provided.{s}\n", .{
+            style_error, reset, style_err_msg, reset,
+        });
+        std.debug.print("Run '{s} --help' for usage information.\n", .{name});
+        std.process.exit(1);
     }
 
-    // Checking for a flag like "-v"
-    if (cli_args.getOption("v")) |verbose_value| {
-         // In our simple parser, a flag will have an empty string value if just the flag is present.
-         // If a value is provided immediately after (like -vasd), it will have that value.
-         // A more robust parser would handle these differently.
-         std.debug.print("Verbose option found with value: '{s}'\n", .{verbose_value});
-    } else {
-        std.debug.print("Verbose option not found.\n", .{});
-    }
+    // --- Placeholder for successful execution ---
+    const input_file = cli_args.positional.items[0];
+    std.debug.print("Processing file: {s}{s}{s}\n", .{
+        style_file, input_file, reset,
+    });
+    std.debug.print("Processing complete.\n", .{});
 }
