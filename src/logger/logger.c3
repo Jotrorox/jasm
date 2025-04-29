@@ -8,6 +8,7 @@ const String COLOR_WARN  = "\u001B[33m";
 
 fn String get_timestamp() @local
 {
+    // TODO: Replace this logic with libc free std::time stuff
     TzDateTime time = datetime::now().to_local();
     String time_format = datetime::tformat(DateTimeFormat.TIMEONLY, time);
 
