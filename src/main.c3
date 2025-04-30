@@ -3,13 +3,25 @@ module jasm;
 import std::io, std::collections;
 import logger;
 import argparser;
+import lexer;
+import config;
+
+const config::Config CONFIG = {
+    .version = "0.2.0",
+    .name = "jasm",
+    .author = "Johannes (jotrorox) Müller",
+    .year = 2025,
+    .license = "MIT"
+};
 
 fn void handle_cmd_version() {
-	io::printn("jasm 0.2.0 - Copyright 2025 Johannes (jotrorox) Müller");
+	io::printfn("%s %s - Copyright %d %s", CONFIG.version, CONFIG.name, CONFIG.year, CONFIG.author);
 }
 
 fn int main(String[] args)
 {
+    logger::Logger logger = {.to_file = false};
+
 	Option[] options = {
 		{
 			.short_name = 'v',
@@ -27,16 +39,16 @@ fn int main(String[] args)
 	}
 
 	if (args.len <= 1) {
-		io::eprintn("Please input a jasm file or use the command line options!");
-		io::eprintfn("Usage: %s <your jasm file>", args[0]);
+		logger.error("Please input a jasm file or use the command line options!");
+		logger.error("Usage: %s <your jasm file>", args[0]);
 		return 1;
 	}
 
 	String filename = args[1];
 
 	if (!file::is_file(filename)) {
-		io::eprintn("Please input a valid file path!");
-		io::eprintfn("Usage: %s <your jasm file>", args[0]);
+		logger.error("Please input a valid file path!");
+		logger.error("Usage: %s <your jasm file>", args[0]);
 		return 1;
 	}
 
@@ -48,13 +60,12 @@ fn int main(String[] args)
 		lines.push(line);
 	}
 
-	List { int } move_lines;
-	foreach (index, item : lines) {
-		if (item.trim().starts_with("move")) {
-			move_lines.push(((int)index)+1);
-			logger::info("Found move line at index %d", index);
-		}
-	}
+    lexer::Lexer lexer = {.lines = lines, .logger = {.to_file = false}};
+    List { lexer::Token } tokens = lexer.lex()!!;
+
+    foreach (index, item : tokens) {
+        logger.info("Token %d: %s", index, item);
+    }
 
 	return 0;
 }

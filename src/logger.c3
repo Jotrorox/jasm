@@ -1,7 +1,12 @@
 module logger;
 
 import std::time::datetime, std::io;
-import color;
+import ansi;
+
+struct Logger {
+    // TODO: Implement file logging
+    bool to_file;
+}
 
 fn String get_timestamp() @local
 {
@@ -10,17 +15,17 @@ fn String get_timestamp() @local
     return string::tformat("[%s]", time_format);
 }
 
-fn void warn(String fmt, args...)
+fn void Logger.warn(&self, String fmt, args...)
 {
-    io::printfn("%s%s [WARN] %s%s", color::WARN, get_timestamp(), string::tformat(fmt, ...args), color::RESET);
+    io::printfn("%s%s%s [WARN] %s%s", ansi::YELLOW, ansi::BOLD, get_timestamp(), string::tformat(fmt, ...args), ansi::RESET);
 }
 
-fn void info(String fmt, args...)
+fn void Logger.info(&self, String fmt, args...)
 {
-    io::printfn("%s [INFO] %s%s", get_timestamp(), string::tformat(fmt, ...args), color::RESET);
+    io::printfn("%s%s [INFO] %s%s", ansi::DIM, get_timestamp(), string::tformat(fmt, ...args), ansi::RESET);
 }
 
-fn void error(String fmt, args...)
+fn void Logger.error(&self, String fmt, args...)
 {
-    io::printfn("%s%s [ERROR] %s%s", color::ERROR, get_timestamp(), string::tformat(fmt, ...args), color::RESET);
+    io::printfn("%s%s%s [ERROR] %s%s", ansi::BOLD, ansi::RED, get_timestamp(), string::tformat(fmt, ...args), ansi::RESET);
 }
