@@ -40,7 +40,7 @@ fn int main(String[] args)
 		return 1;
 	}
 
-	File file = file::open("test.jasm", "r")!!;
+	File file = file::open(filename, "r")!!;
 	defer (void)file.close();
 
 	List{ String } lines;
@@ -48,8 +48,12 @@ fn int main(String[] args)
 		lines.push(line);
 	}
 
-	foreach (item : lines) {
-		io::printfn("%s", item);
+	List { int } move_lines;
+	foreach (index, item : lines) {
+		if (item.trim().starts_with("move")) {
+			move_lines.push(((int)index)+1);
+			logger::info("Found move line at index %d", index);
+		}
 	}
 
 	return 0;
