@@ -5,7 +5,7 @@ import logger;
 
 extern fn char *strtok(char *strToken, char *strDelimit);
 
-faultdef INCORRECT_TOKEN, WRONG_TOKEN_FMT;
+faultdef INCORRECT_TOKEN, WRONG_TOKEN_FMT, WRONG_EXPR_FMT;
 
 enum TokenTypes {
     KEYWORD,
@@ -44,22 +44,27 @@ struct Lexer {
     logger::Logger logger;
 }
 
-fn TokenTypes[3]? lex_move(String line) @local @inline
+fn Token[3]? lex_move(String line) @local @inline
 {
-    TokenTypes[3] tokens = {TokenTypes.KEYWORD, TokenTypes.REGISTER, TokenTypes.LITERAL};
+    Token[3] tokens;
+    String[] splitLine = line.split(allocator::temp(), " ");
+    if (splitLine.len != 3) return WRONG_TOKEN_FMT?;
+    tokens[0] = {.type = TokenTypes.KEYWORD, .key_word = KeyWords.MOVE, .value = splitLine[0]};
+    tokens[1] = {.type = TokenTypes.REGISTER, .key_word = KeyWords.MOVE, .value = splitLine[0]};
+    tokens[2] = {.type = TokenTypes.LITERAL, .key_word = KeyWords.MOVE, .value = splitLine[0]};
     return tokens;
 }
 
-fn TokenTypes? lex_call(String line) @local @inline
+fn Token? lex_call(String line) @local @inline
 {
     if (line.trim() != "call") return WRONG_TOKEN_FMT?;
-    return TokenTypes.KEYWORD;
+    return {.type = TokenTypes.KEYWORD, .key_word = KeyWords.CALL, .value = line.trim()};
 }
 
-fn List { TokenTypes }? Lexer.lex(&self)
+fn List { Token }? Lexer.lex(&self)
 {
     List { String } lines = self.lines;
-    List { TokenTypes } tokens;
+    List { Token } tokens;
     defer lines.free();
     defer tokens.free();
 
@@ -74,11 +79,11 @@ fn List { TokenTypes }? Lexer.lex(&self)
         self.logger.info("Line %d: %s", index, line);
 
         if (line.starts_with("move")) {
-            TokenTypes[3]? tmp_tokens = lex_move(line);
+            Token[3]? tmp_tokens = lex_move(line);
             if (catch error = tmp_tokens) return INCORRECT_TOKEN?;
             foreach (token : tmp_tokens) tokens.push(token);
         } else if (line.starts_with("call")) {
-            TokenTypes? tmp_token = lex_call(line);
+            Token? tmp_token = lex_call(line);
             if (catch error = tmp_token) return INCORRECT_TOKEN?;
             tokens.push(tmp_token);
         } else {
