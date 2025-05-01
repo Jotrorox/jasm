@@ -61,7 +61,7 @@ fn int main(String[] args)
 	}
 
     lexer::Lexer lexer = {.lines = lines, .logger = {.to_file = false}};
-    List { lexer::Token } tokens = lexer.lex()!!;
+    List { lexer::TokenTypes } tokens = lexer.lex()!!;
 
     foreach (index, item : tokens) {
         logger.info("Token %d: %s", index, item);

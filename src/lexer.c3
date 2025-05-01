@@ -5,7 +5,9 @@ import logger;
 
 extern fn char *strtok(char *strToken, char *strDelimit);
 
-enum Token {
+faultdef INCORRECT_TOKEN, WRONG_TOKEN_FMT;
+
+enum TokenTypes {
     KEYWORD,
     LITERAL,
     REGISTER,
@@ -15,7 +17,26 @@ enum Token {
 
 enum KeyWords {
     MOVE,
-    CALL
+    CALL,
+    NONE
+}
+
+enum ExpressionTypes {
+    MOVE,
+    CALL,
+    NONE
+}
+
+struct Token {
+    TokenTypes type;
+    KeyWords key_word;
+    String value;
+}
+
+struct Expression {
+    ExpressionTypes type;
+    List{ Token } tokens;
+    int line;
 }
 
 struct Lexer {
@@ -23,9 +44,22 @@ struct Lexer {
     logger::Logger logger;
 }
 
-fn List { Token }? Lexer.lex(&self) {
-    List {String} lines = self.lines;
-    List { Token } tokens;
+fn TokenTypes[3]? lex_move(String line) @local @inline
+{
+    TokenTypes[3] tokens = {TokenTypes.KEYWORD, TokenTypes.REGISTER, TokenTypes.LITERAL};
+    return tokens;
+}
+
+fn TokenTypes? lex_call(String line) @local @inline
+{
+    if (line.trim() != "call") return WRONG_TOKEN_FMT?;
+    return TokenTypes.KEYWORD;
+}
+
+fn List { TokenTypes }? Lexer.lex(&self)
+{
+    List { String } lines = self.lines;
+    List { TokenTypes } tokens;
     defer lines.free();
     defer tokens.free();
 
@@ -39,29 +73,16 @@ fn List { Token }? Lexer.lex(&self) {
 
         self.logger.info("Line %d: %s", index, line);
 
-        // Max 3 Tokens per line `Keyword Register, Literal`
-        int token_count = 0;
-        Token[3] tmp_tokens;
-        char *token = strtok(line, delimiters);
-
-        while (token != null && token_count < 3) {
-            if (token_count == 0) {
-                switch (token) {
-                    case "move": tmp_tokens[token_count] = Token.KEYWORD;
-                    case "call": tmp_tokens[token_count] = Token.KEYWORD;
-                    default: tmp_tokens[token_count] = Token.INVALID;
-                }
-            } else if (token_count == 1) {
-                tmp_tokens[token_count] = Token.REGISTER;
-            } else {
-                tmp_tokens[token_count] = Token.LITERAL;
-            }
-
-            token = strtok(null, delimiters);
-        }
-
-        foreach (tmp_token : tmp_tokens) {
+        if (line.starts_with("move")) {
+            TokenTypes[3]? tmp_tokens = lex_move(line);
+            if (catch error = tmp_tokens) return INCORRECT_TOKEN?;
+            foreach (token : tmp_tokens) tokens.push(token);
+        } else if (line.starts_with("call")) {
+            TokenTypes? tmp_token = lex_call(line);
+            if (catch error = tmp_token) return INCORRECT_TOKEN?;
             tokens.push(tmp_token);
+        } else {
+            return INCORRECT_TOKEN?;
         }
     }
 

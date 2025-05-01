@@ -1,0 +1,3 @@
+move rax 60
+move rdi 0
+call

@@ -15,14 +15,19 @@ fn String get_timestamp() @local
     return string::tformat("[%s]", time_format);
 }
 
+fn void Logger.info(&self, String fmt, args...)
+{
+    io::printfn("%s%s [INFO] %s%s", ansi::GREEN, get_timestamp(), string::tformat(fmt, ...args), ansi::RESET);
+}
+
+fn void Logger.debug(&self, String fmt, args...)
+{
+    io::printfn("%s%s [DEBUG] %s%s", ansi::DIM, get_timestamp(), string::tformat(fmt, ...args), ansi::RESET);
+}
+
 fn void Logger.warn(&self, String fmt, args...)
 {
     io::printfn("%s%s%s [WARN] %s%s", ansi::YELLOW, ansi::BOLD, get_timestamp(), string::tformat(fmt, ...args), ansi::RESET);
-}
-
-fn void Logger.info(&self, String fmt, args...)
-{
-    io::printfn("%s%s [INFO] %s%s", ansi::DIM, get_timestamp(), string::tformat(fmt, ...args), ansi::RESET);
 }
 
 fn void Logger.error(&self, String fmt, args...)
