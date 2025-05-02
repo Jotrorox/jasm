@@ -50,8 +50,8 @@ fn Token[3]? lex_move(String line) @local @inline
     String[] splitLine = line.split(allocator::temp(), " ");
     if (splitLine.len != 3) return WRONG_TOKEN_FMT?;
     tokens[0] = {.type = TokenTypes.KEYWORD, .key_word = KeyWords.MOVE, .value = splitLine[0]};
-    tokens[1] = {.type = TokenTypes.REGISTER, .key_word = KeyWords.MOVE, .value = splitLine[0]};
-    tokens[2] = {.type = TokenTypes.LITERAL, .key_word = KeyWords.MOVE, .value = splitLine[0]};
+    tokens[1] = {.type = TokenTypes.REGISTER, .key_word = KeyWords.NONE, .value = splitLine[0]};
+    tokens[2] = {.type = TokenTypes.LITERAL, .key_word = KeyWords.NONE, .value = splitLine[0]};
     return tokens;
 }
 
@@ -61,12 +61,12 @@ fn Token? lex_call(String line) @local @inline
     return {.type = TokenTypes.KEYWORD, .key_word = KeyWords.CALL, .value = line.trim()};
 }
 
-fn List { Token }? Lexer.lex(&self)
+fn List { Expression }? Lexer.lex(&self)
 {
     List { String } lines = self.lines;
-    List { Token } tokens;
+    List { Expression } expressions;
     defer lines.free();
-    defer tokens.free();
+    defer expressions.free();
 
     char *delimiters = " ,";
 
@@ -81,17 +81,23 @@ fn List { Token }? Lexer.lex(&self)
         if (line.starts_with("move")) {
             Token[3]? tmp_tokens = lex_move(line);
             if (catch error = tmp_tokens) return INCORRECT_TOKEN?;
-            foreach (token : tmp_tokens) tokens.push(token);
+            List { Token } tmp_token_list;
+            defer tmp_token_list.free();
+            foreach(tmp_token : tmp_tokens) tmp_token_list.push(tmp_token);
+            expressions.push({.type = ExpressionTypes.MOVE, .tokens = tmp_token_list, .line = (int)index+1});
         } else if (line.starts_with("call")) {
             Token? tmp_token = lex_call(line);
             if (catch error = tmp_token) return INCORRECT_TOKEN?;
-            tokens.push(tmp_token);
+            List { Token } tmp_token_list;
+            defer tmp_token_list.free();
+            tmp_token_list.push(tmp_token);
+            expressions.push({.type = ExpressionTypes.CALL, .tokens = tmp_token_list, .line = (int)index+1});
         } else {
             return INCORRECT_TOKEN?;
         }
     }
 
-    self.logger.info("Successfully lexed %s Tokens", tokens.len());
+    self.logger.info("Successfully lexed %s Expressions", expressions.len());
 
-    return tokens;
+    return expressions;
 }

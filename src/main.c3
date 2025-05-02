@@ -31,7 +31,7 @@ fn int main(String[] args)
 			.required = false
 		}
 	};
-	ArgParser parser = {args, options};
+	ArgParser parser = {args, options, CONFIG};
 	parser.parse();
 	if (parser.has_arg("v")) {
 		handle_cmd_version(); 
@@ -61,10 +61,10 @@ fn int main(String[] args)
 	}
 
     lexer::Lexer lexer = {.lines = lines, .logger = {.to_file = false}};
-    List { lexer::Token } tokens = lexer.lex()!!;
+    List { lexer::Expression } expressions = lexer.lex()!!;
 
-    foreach (index, item : tokens) {
-        logger.info("Token %d: %s", index, item.type);
+    foreach (item : expressions) {
+        logger.info("Expression at Line %d: %s", item.line, item.type);
     }
 
 	return 0;

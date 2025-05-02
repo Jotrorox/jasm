@@ -17,7 +17,7 @@ fn String get_timestamp() @local
 
 fn void Logger.info(&self, String fmt, args...)
 {
-    io::printfn("%s%s [INFO] %s%s", ansi::GREEN, get_timestamp(), string::tformat(fmt, ...args), ansi::RESET);
+    io::printfn("%s%s [INFO] %s%s", ansi::BRIGHT_GREEN, get_timestamp(), string::tformat(fmt, ...args), ansi::RESET);
 }
 
 fn void Logger.debug(&self, String fmt, args...)
@@ -27,10 +27,10 @@ fn void Logger.debug(&self, String fmt, args...)
 
 fn void Logger.warn(&self, String fmt, args...)
 {
-    io::printfn("%s%s%s [WARN] %s%s", ansi::YELLOW, ansi::BOLD, get_timestamp(), string::tformat(fmt, ...args), ansi::RESET);
+    io::printfn("%s%s%s [WARN] %s%s", ansi::BRIGHT_YELLOW, ansi::BOLD, get_timestamp(), string::tformat(fmt, ...args), ansi::RESET);
 }
 
 fn void Logger.error(&self, String fmt, args...)
 {
-    io::printfn("%s%s%s [ERROR] %s%s", ansi::BOLD, ansi::RED, get_timestamp(), string::tformat(fmt, ...args), ansi::RESET);
+    io::printfn("%s%s%s [ERROR] %s%s", ansi::BOLD, ansi::BRIGHT_RED, get_timestamp(), string::tformat(fmt, ...args), ansi::RESET);
 }

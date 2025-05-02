@@ -2,6 +2,8 @@ module argparser;
 
 import std::io;
 import std::os;
+import ansi;
+import config;
 
 const int EXIT_SUCCESS = 0;
 const int EXIT_FAILURE = 1;
@@ -20,6 +22,7 @@ struct ArgParser
 {
     String[] args;
     Option[] options;
+    config::Config config;
 }
 
 fn String ArgParser.get_arg(&self, String name)
@@ -32,7 +35,7 @@ fn String ArgParser.get_arg(&self, String name)
         }
     }
 
-    io::eprintfn("Argument '%s' is not defined", name);
+    io::eprintfn("%sArgument '%s' is not defined%s", ansi::RED, name, ansi::RESET);
     os::exit(EXIT_FAILURE);
     return "";
 }
@@ -72,7 +75,7 @@ fn void ArgParser.parse(&self)
                 {
                     if (i + 1 >= self.args.len)
                     {
-                        io::eprintfn("Option '%s' requires an argument", arg);
+                        io::eprintfn("%sOption '%s' requires an argument%s", ansi::RED, arg, ansi::RESET);
                         os::exit(EXIT_FAILURE);
                     }
                     self.options[j].value = self.args[i + 1];
@@ -90,7 +93,7 @@ fn void ArgParser.parse(&self)
     {
         if (self.options[i].required && self.options[i].value == "")
         {
-            io::eprintfn("Option '--%s' is required", self.options[i].long_name);
+            io::eprintfn("%sOption '--%s' is required%s", ansi::RED, self.options[i].long_name, ansi::RESET);
             os::exit(EXIT_FAILURE);
         }
     }
@@ -98,9 +101,13 @@ fn void ArgParser.parse(&self)
 
 fn void ArgParser.print_usage(&self)
 {
-    io::printfn("Usage: %s [OPTIONS]", self.args[0]);
+    io::printfn("%s%s v%s%s", ansi::BOLD, self.config.name, self.config.version, ansi::RESET);
+    io::printfn("Copyright (c) %d %s", self.config.year, self.config.author);
     io::printn();
-    io::printn("Options:");
+
+    io::printfn("%sUsage: %s [OPTIONS]%s", ansi::BOLD, self.args[0], ansi::RESET);
+    io::printn();
+    io::printfn("%sOptions:%s", ansi::BOLD, ansi::RESET);
 
     int max_long_name_len = 0;
     for (int i = 0; i < self.options.len; i++)
@@ -116,20 +123,20 @@ fn void ArgParser.print_usage(&self)
 
     if (help_option.short_name)
     {
-        io::printfn("  -%c, --%-10s  %s", help_option.short_name, help_option.long_name, help_option.description);
+        io::printfn("  %s-%c%s, %s--%-10s%s  %s", ansi::GREEN, help_option.short_name, ansi::RESET, ansi::GREEN, help_option.long_name, ansi::RESET, help_option.description);
     } else
     {
-        io::printfn("      --%-10s  %s", help_option.long_name, help_option.description);
+        io::printfn("      %s--%-10s%s  %s", ansi::GREEN, help_option.long_name, ansi::RESET, help_option.description);
     }
 
     for (int i = 0; i < self.options.len; i++)
     {
         if (self.options[i].short_name)
         {
-            io::printfn("  -%c, --%-10s  %s", self.options[i].short_name, self.options[i].long_name, self.options[i].description);
+            io::printfn("  %s-%c%s, %s--%-10s%s  %s", ansi::GREEN, self.options[i].short_name, ansi::RESET, ansi::GREEN, self.options[i].long_name, ansi::RESET, self.options[i].description);
         } else
         {
-            io::printfn("      --%-10s  %s", self.options[i].long_name, self.options[i].description);
+            io::printfn("      %s--%-10s%s  %s", ansi::GREEN, self.options[i].long_name, ansi::RESET, self.options[i].description);
         }
     }
 }
