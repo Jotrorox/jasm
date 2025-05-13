@@ -1,4 +1,4 @@
-module ansi;
+module utils;
 
 // Reset
 const String RESET         = "\u001B[0m";

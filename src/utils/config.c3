@@ -1,4 +1,4 @@
-module config;
+module utils;
 
 struct Config {
     String version;

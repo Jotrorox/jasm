@@ -1,7 +1,7 @@
 module lexer;
 
 import std::collections, std::io, std::core::mem::allocator;
-import logger;
+import utils;
 
 extern fn char *strtok(char *strToken, char *strDelimit);
 
@@ -41,7 +41,7 @@ struct Expression {
 
 struct Lexer {
     List{ String } lines;
-    logger::Logger logger;
+    utils::Logger logger;
 }
 
 fn Token[3]? lex_move(String line) @local @inline

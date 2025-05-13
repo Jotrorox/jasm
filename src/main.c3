@@ -1,12 +1,11 @@
 module jasm;
 
 import std::io, std::collections;
-import logger;
-import argparser;
+import cli;
 import lexer;
-import config;
+import utils;
 
-const config::Config CONFIG = {
+const utils::Config CONFIG = {
     .version = "0.2.0",
     .name = "jasm",
     .author = "Johannes (jotrorox) Müller",
@@ -14,36 +13,11 @@ const config::Config CONFIG = {
     .license = "MIT"
 };
 
-fn void handle_cmd_version() {
-	io::printfn("%s %s - Copyright %d %s", CONFIG.version, CONFIG.name, CONFIG.year, CONFIG.author);
-}
-
 fn int main(String[] args)
 {
-    logger::Logger logger = {.to_file = false};
+    utils::Logger logger = {.to_file = false};
 
-	Option[] options = {
-		{
-			.short_name = 'v',
-			.long_name = "version",
-			.description = "Displays the version",
-			.has_arg = false,
-			.required = false
-		}
-	};
-	ArgParser parser = {args, options, CONFIG};
-	parser.parse();
-	if (parser.has_arg("v")) {
-		handle_cmd_version(); 
-		return 0;
-	}
-
-	if (args.len <= 1) {
-		logger.error("Please input a jasm file or use the command line options!");
-		logger.error("Usage: %s <your jasm file>", args[0]);
-		return 1;
-	}
-
+  args = cli::cli(args, logger);
 	String filename = args[1];
 
 	if (!file::is_file(filename)) {

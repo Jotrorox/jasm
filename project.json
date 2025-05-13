@@ -14,5 +14,8 @@
     }
   },
   "cpu": "generic",
-  "opt": "O1"
+  "opt": "O5",
+  "safe": true,
+  "strip-unused": true,
+  "use-stdlib": true,
 }
