@@ -17,5 +17,5 @@
   "opt": "O5",
   "safe": true,
   "strip-unused": true,
-  "use-stdlib": true,
+  "use-stdlib": true
 }
