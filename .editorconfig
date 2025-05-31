@@ -7,8 +7,6 @@ trim_trailing_whitespace = true
 
 [*.md]
 
-[*.c3]
-
 [*.html]
 
 [*.json]

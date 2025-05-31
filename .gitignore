@@ -1,3 +1,4 @@
-build/
 jasm
 temp*
+.zig-cache
+zig-out
